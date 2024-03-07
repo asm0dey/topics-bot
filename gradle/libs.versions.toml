@@ -15,7 +15,7 @@ shadow = { id = "com.github.johnrengelman.shadow", version = "8.1.1" }
 
 [versions]
 
-kotlin = "1.9.22"
+kotlin = "1.9.23"
 ##  ⬆ = "1.9.23"
 ##  ⬆ = "2.0.0-Beta1"
 ##  ⬆ = "2.0.0-Beta2"
