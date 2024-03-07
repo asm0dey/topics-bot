@@ -1,0 +1,6 @@
+[bot]
+token = "TEST_TOKEN"
+admin = 52692559
+
+[database]
+location = "test.location"
