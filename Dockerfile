@@ -4,7 +4,7 @@ COPY . /project
 
 RUN cd /project && gradle build
 
-FROM ghcr.io/graalvm/jdk-community:21 AS runner
+FROM ghcr.io/graalvm/jdk-community:22 AS runner
 
 RUN mkdir -p /app
 
