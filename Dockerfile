@@ -1,10 +1,10 @@
-FROM gradle:jdk21-graal-jammy AS builder
+FROM gradle:jdk21-alpine AS builder
 
 COPY . /project
 
 RUN cd /project && gradle build
 
-FROM ghcr.io/graalvm/jdk-community:22 AS runner
+FROM bellsoft/liberica-runtime-container:jre-slim AS runner
 
 RUN mkdir -p /app && mkdir -p /db
 
