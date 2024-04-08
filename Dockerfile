@@ -12,7 +12,7 @@ VOLUME /db
 
 ENV BOT__ADMIN BOT__TOKEN DATABASE__LOCATION
 
-COPY --from=builder /project/build/libs/topics-bot-0.1.0-all.jar /app/app.jar
+COPY --from=builder /project/build/libs/topics-bot-0.2.0-all.jar /app/app.jar
 
 CMD java -jar /app/app.jar
 
