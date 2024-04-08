@@ -4,15 +4,14 @@ import eu.vendeli.tgbot.TelegramBot
 import eu.vendeli.tgbot.annotations.CommandHandler
 import eu.vendeli.tgbot.annotations.RegexCommandHandler
 import eu.vendeli.tgbot.annotations.UnprocessedHandler
+import eu.vendeli.tgbot.api.media.sendMediaGroup
 import eu.vendeli.tgbot.api.message.deleteMessages
 import eu.vendeli.tgbot.api.message.editMessageText
 import eu.vendeli.tgbot.api.message.message
 import eu.vendeli.tgbot.types.ParseMode.Markdown
 import eu.vendeli.tgbot.types.User
-import eu.vendeli.tgbot.types.internal.CallbackQueryUpdate
-import eu.vendeli.tgbot.types.internal.MessageUpdate
-import eu.vendeli.tgbot.types.internal.ProcessedUpdate
-import eu.vendeli.tgbot.types.internal.getOrNull
+import eu.vendeli.tgbot.types.internal.*
+import eu.vendeli.tgbot.types.media.InputMedia
 import eu.vendeli.tgbot.utils.builders.InlineKeyboardMarkupBuilder
 import eu.vendeli.tgbot.utils.setChain
 import jetbrains.exodus.database.TransientEntityStore
@@ -22,7 +21,19 @@ import kotlinx.dnq.*
 import kotlinx.dnq.query.*
 import kotlinx.dnq.store.container.StaticStoreContainer
 import kotlinx.dnq.util.initMetaData
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveKind.STRING
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.Json
 import org.joda.time.DateTime
+import org.joda.time.LocalDateTime
+import kotlin.text.Charsets.UTF_8
 import kotlin.time.Duration.Companion.seconds
 
 suspend fun main() {
@@ -65,7 +76,7 @@ val store by lazy { initXodus() }
 suspend fun addtopic(user: User, bot: TelegramBot, update: MessageUpdate) {
     store.transactional {
         XdTask.new {
-            text = update.text.substringAfter("/addtopic").replace("@newpodcast2_topic_manager_bot","").trim()
+            text = update.text.substringAfter("/addtopic").replace("@newpodcast2_topic_manager_bot", "").trim()
             author = user.id
             createdAt = DateTime.now()
             authorName = user.username ?: listOfNotNull(user.firstName, user.lastName).joinToString(" ")
@@ -158,7 +169,7 @@ suspend fun updateTopicsMessage(bot: TelegramBot, up: CallbackQueryUpdate) {
                 callbackData("Delete") { "deleteMany=${ids.joinToString("&")}" }
             }.send(chatId, bot)
     } else if (up.text == "${TOPIC_PREFIX}refresh") {
-        val (ids,text) = store.transactional {
+        val (ids, text) = store.transactional {
             val tasks = chatTasks(chatId)
                 .take(PAGE_SIZE)
                 .asIterable()
@@ -166,7 +177,7 @@ suspend fun updateTopicsMessage(bot: TelegramBot, up: CallbackQueryUpdate) {
         }
         editMessageText(messageId ?: return) { text }
             .options { parseMode = Markdown }
-            .inlineKeyboardMarkup { firstPageButtons(topicsCount,ids) }
+            .inlineKeyboardMarkup { firstPageButtons(topicsCount, ids) }
             .send(chatId, bot)
     }
 }
@@ -186,6 +197,48 @@ suspend fun deleteMany(bot: TelegramBot, up: CallbackQueryUpdate) {
                 }
         }
         .send(chatId, bot)
+}
+
+@CommandHandler(["export"])
+suspend fun export(bot: TelegramBot, up: MessageUpdate) {
+    val chat = up.message.chat
+    val allTasks = store.transactional {
+        chatTasks(chat.id).toList().map { Task(it) }
+    }
+    val data = Json.encodeToString(allTasks)
+    sendMediaGroup(
+        InputMedia.Document(
+            ImplicitFile.InpFile(
+                InputFile(
+                    data.toByteArray(UTF_8),
+                    LocalDateTime.now().toString(),
+                    "application/json"
+                )
+            )
+        )
+    ).send(chat, bot)
+}
+
+@Serializable
+data class Task(
+    val text: String,
+    val author: Long,
+    val authorName: String,
+    @Serializable(with = JodaDateTimeSerializer::class)
+    val createdAt: DateTime
+) {
+    constructor(it: XdTask) : this(it.text, it.author, it.authorName, it.createdAt)
+}
+
+class JodaDateTimeSerializer : KSerializer<DateTime> {
+    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("DateTime", STRING)
+
+    override fun deserialize(decoder: Decoder): DateTime = DateTime.parse(decoder.decodeString())
+
+    override fun serialize(encoder: Encoder, value: DateTime) {
+        encoder.encodeString(value.toString())
+    }
+
 }
 
 @RegexCommandHandler("delete=.*")

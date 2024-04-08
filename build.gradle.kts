@@ -2,11 +2,13 @@ plugins {
     alias(libs.plugins.org.jetbrains.kotlin.jvm)
     alias(libs.plugins.com.google.devtools.ksp)
     alias(libs.plugins.shadow)
+    alias(libs.plugins.org.jetbrains.kotlin.plugin.serialization)
+
     application
 }
 
 group = "com.github.asm0dey"
-version = "0.1.0"
+version = "0.2.0"
 application {
     mainClass = "BotKt"
 }
@@ -19,9 +21,10 @@ dependencies {
     ksp(libs.telegram.ksp)
     implementation(libs.hoplite.toml)
     implementation(libs.tinylog.kotlin)
-    implementation(libs.tinylog.slf4j)
-    implementation(libs.tinylog.impl)
+//    implementation(libs.tinylog.slf4j)
+//    implementation(libs.tinylog.impl)
     implementation(libs.xodus.dnq)
+    implementation(libs.kotlinx.serialization.json)
 }
 
 kotlin {
