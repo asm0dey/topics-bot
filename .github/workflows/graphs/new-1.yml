@@ -1,0 +1,251 @@
+entry: gh-start
+executions:
+  - src:
+      node: gh-start
+      port: exec-on-push
+    dst:
+      node: gh-checkout
+      port: exec
+  - src:
+      node: gh-checkout
+      port: exec
+    dst:
+      node: branch-v1-koala-blackberry-plum
+      port: exec
+  - src:
+      node: branch-v1-koala-blackberry-plum
+      port: exec-then
+    dst:
+      node: gh-sigstore-cosign-installer-v3-4-0-pink-orange-brown
+      port: exec
+  - src:
+      node: gh-sigstore-cosign-installer-v3-4-0-pink-orange-brown
+      port: exec
+    dst:
+      node: gh-docker-setup-buildx-action-v3-3-0-yellow-raspberry-orange
+      port: exec
+  - src:
+      node: branch-v1-koala-blackberry-plum
+      port: exec-otherwise
+    dst:
+      node: gh-docker-setup-buildx-action-v3-3-0-yellow-raspberry-orange
+      port: exec
+  - src:
+      node: gh-docker-setup-buildx-action-v3-3-0-yellow-raspberry-orange
+      port: exec
+    dst:
+      node: branch-v1-apple-zebra-squirrel
+      port: exec
+  - src:
+      node: branch-v1-apple-zebra-squirrel
+      port: exec-then
+    dst:
+      node: gh-docker-login-action-v3-1-0-koala-pear-dog
+      port: exec
+  - src:
+      node: branch-v1-apple-zebra-squirrel
+      port: exec-otherwise
+    dst:
+      node: gh-docker-metadata-action-v5-5-1-panda-kangaroo-kangaroo
+      port: exec
+  - src:
+      node: gh-docker-login-action-v3-1-0-koala-pear-dog
+      port: exec
+    dst:
+      node: gh-docker-metadata-action-v5-5-1-panda-kangaroo-kangaroo
+      port: exec
+  - src:
+      node: gh-docker-metadata-action-v5-5-1-panda-kangaroo-kangaroo
+      port: exec
+    dst:
+      node: gh-docker-build-push-action-v5-3-0-pineapple-lemon-gold
+      port: exec
+  - src:
+      node: gh-docker-build-push-action-v5-3-0-pineapple-lemon-gold
+      port: exec
+    dst:
+      node: branch-v1-panda-cat-zebra
+      port: exec
+  - src:
+      node: branch-v1-panda-cat-zebra
+      port: exec-then
+    dst:
+      node: run-v1-gold-grape-orange
+      port: exec
+connections:
+  - src:
+      node: string-match-v1-lion-cranberry-watermelon
+      port: result
+    dst:
+      node: branch-v1-koala-blackberry-plum
+      port: condition
+  - src:
+      node: string-match-v1-lion-cranberry-watermelon
+      port: result
+    dst:
+      node: branch-v1-apple-zebra-squirrel
+      port: condition
+  - src:
+      node: gh-docker-metadata-action-v5-5-1-panda-kangaroo-kangaroo
+      port: tags
+    dst:
+      node: gh-docker-build-push-action-v5-3-0-pineapple-lemon-gold
+      port: tags
+  - src:
+      node: gh-docker-metadata-action-v5-5-1-panda-kangaroo-kangaroo
+      port: labels
+    dst:
+      node: gh-docker-build-push-action-v5-3-0-pineapple-lemon-gold
+      port: labels
+  - src:
+      node: string-match-v1-lion-cranberry-watermelon
+      port: result
+    dst:
+      node: branch-v1-panda-cat-zebra
+      port: condition
+  - src:
+      node: gh-docker-build-push-action-v5-3-0-pineapple-lemon-gold
+      port: digest
+    dst:
+      node: env-array-v1-rabbit-cherry-cranberry
+      port: env[0]
+  - src:
+      node: gh-docker-metadata-action-v5-5-1-panda-kangaroo-kangaroo
+      port: labels
+    dst:
+      node: env-array-v1-rabbit-cherry-cranberry
+      port: env[1]
+  - src:
+      node: env-array-v1-rabbit-cherry-cranberry
+      port: env
+    dst:
+      node: run-v1-gold-grape-orange
+      port: env
+nodes:
+  - id: gh-start
+    type: gh-start@v1
+    position:
+      x: 50
+      y: -10
+    settings:
+      folded: false
+  - id: gh-checkout
+    type: github.com/actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+    position:
+      x: 500
+      y: 160
+    settings:
+      folded: false
+  - id: gh-sigstore-cosign-installer-v3-4-0-pink-orange-brown
+    type: >-
+      github.com/sigstore/cosign-installer@e1523de7571e31dbe865fd2e80c5c7c23ae71eb4
+    position:
+      x: 1350
+      y: 290
+    settings:
+      folded: false
+  - id: branch-v1-koala-blackberry-plum
+    type: branch@v1
+    position:
+      x: 1070
+      y: 500
+    inputs:
+      condition: false
+    settings:
+      folded: false
+  - id: gh-docker-setup-buildx-action-v3-3-0-yellow-raspberry-orange
+    type: >-
+      github.com/docker/setup-buildx-action@d70bba72b1f3fd22344832f00baa16ece964efeb
+    position:
+      x: 1770
+      y: 280
+    settings:
+      folded: false
+  - id: string-match-v1-lion-cranberry-watermelon
+    type: string-match@v1
+    position:
+      x: 600
+      y: 960
+    inputs:
+      op: equals
+      str1: ${{ github.event_name }}
+      str2: pull_request
+    settings:
+      folded: false
+  - id: branch-v1-apple-zebra-squirrel
+    type: branch@v1
+    position:
+      x: 2270
+      y: 600
+    settings:
+      folded: false
+  - id: gh-docker-login-action-v3-1-0-koala-pear-dog
+    type: github.com/docker/login-action@e92390c5fb421da1463c202d546fed0ec5c39f20
+    position:
+      x: 2540
+      y: 240
+    inputs:
+      registry: ${{ env.REGISTRY }}
+      username: ${{ github.actor }}
+      password: ${{ secrets.GITHUB_TOKEN }}
+    settings:
+      folded: false
+  - id: gh-docker-metadata-action-v5-5-1-panda-kangaroo-kangaroo
+    type: github.com/docker/metadata-action@8e5442c4ef9f78752691e2d8f8d19755c6f78e81
+    position:
+      x: 2980
+      y: 740
+    inputs:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+      images: ghcr.io/${{ github.repository }}
+    settings:
+      folded: false
+  - id: gh-docker-build-push-action-v5-3-0-pineapple-lemon-gold
+    type: >-
+      github.com/docker/build-push-action@2cdde995de11925a030ce8070c3d77a52ffcf1c0
+    position:
+      x: 3520
+      y: 570
+    inputs:
+      push: ${{ github.event_name != 'pull_request' }}false
+      context: .
+      cache-from: type=gha
+      cache-to: type=gha,mode=max
+    settings:
+      folded: false
+  - id: branch-v1-panda-cat-zebra
+    type: branch@v1
+    position:
+      x: 3870
+      y: 470
+    settings:
+      folded: false
+  - id: run-v1-gold-grape-orange
+    type: run@v1
+    position:
+      x: 4440
+      y: 720
+    inputs:
+      env:
+        - TAGS
+        - ''
+      script: echo "${TAGS}" | xargs -I {} cosign sign --yes {}@${DIGEST}
+    settings:
+      folded: false
+  - id: env-array-v1-rabbit-cherry-cranberry
+    type: env-array@v1
+    position:
+      x: 4000
+      y: 790
+    inputs:
+      env[0]: ''
+      env[1]: ''
+    settings:
+      folded: false
+registries:
+  - github.com/sigstore/cosign-installer@v3.4.0
+  - github.com/docker/setup-buildx-action@v3.3.0
+  - github.com/docker/metadata-action@v5.5.1
+  - github.com/docker/login-action@v3.1.0
+  - github.com/docker/build-push-action@v5.3.0
+description: ''
