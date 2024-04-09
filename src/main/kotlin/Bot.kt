@@ -5,6 +5,7 @@ import eu.vendeli.tgbot.annotations.CommandHandler
 import eu.vendeli.tgbot.annotations.RegexCommandHandler
 import eu.vendeli.tgbot.annotations.UnprocessedHandler
 import eu.vendeli.tgbot.api.media.sendMediaGroup
+import eu.vendeli.tgbot.api.message.SendMessageAction
 import eu.vendeli.tgbot.api.message.deleteMessages
 import eu.vendeli.tgbot.api.message.editMessageText
 import eu.vendeli.tgbot.api.message.message
@@ -84,6 +85,17 @@ suspend fun addtopic(user: User, bot: TelegramBot, update: MessageUpdate) {
         }
     }
     message { "Added. Thanks ${user.username}" }.send(update.message.chat.id, bot)
+}
+
+@RegexCommandHandler("/broadcast ?.*")
+suspend fun broadcast(bot: TelegramBot, up: MessageUpdate) {
+    if (up.user.id != config.bot.admin) return
+    val chatsToSend = store.transactional {
+        XdTask.filter { it.chatId ne up.message.chat.id }.asSequence().map { it.chatId }.distinct().toList()
+    }
+    for (chat in chatsToSend) {
+        message(up.message.text ?: return).send(chat, bot)
+    }
 }
 
 private const val TOPIC_PREFIX = "topics;"
