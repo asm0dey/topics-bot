@@ -1,11 +1,13 @@
 import CleanDB.Companion.DB_DELETE_NO
 import CleanDB.Companion.DB_DELETE_YES
+import TopicsImport.Import
 import eu.vendeli.tgbot.TelegramBot
 import eu.vendeli.tgbot.annotations.CommandHandler
+import eu.vendeli.tgbot.annotations.InputChain
 import eu.vendeli.tgbot.annotations.RegexCommandHandler
 import eu.vendeli.tgbot.annotations.UnprocessedHandler
+import eu.vendeli.tgbot.api.getFile
 import eu.vendeli.tgbot.api.media.sendMediaGroup
-import eu.vendeli.tgbot.api.message.SendMessageAction
 import eu.vendeli.tgbot.api.message.deleteMessages
 import eu.vendeli.tgbot.api.message.editMessageText
 import eu.vendeli.tgbot.api.message.message
@@ -17,14 +19,15 @@ import eu.vendeli.tgbot.utils.builders.InlineKeyboardMarkupBuilder
 import eu.vendeli.tgbot.utils.setChain
 import jetbrains.exodus.database.TransientEntityStore
 import jetbrains.exodus.entitystore.Entity
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import kotlinx.dnq.*
 import kotlinx.dnq.query.*
 import kotlinx.dnq.store.container.StaticStoreContainer
 import kotlinx.dnq.util.initMetaData
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveKind.STRING
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
@@ -32,8 +35,10 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeFromStream
 import org.joda.time.DateTime
 import org.joda.time.LocalDateTime
+import java.net.URI
 import kotlin.text.Charsets.UTF_8
 import kotlin.time.Duration.Companion.seconds
 
@@ -211,19 +216,19 @@ suspend fun deleteMany(bot: TelegramBot, up: CallbackQueryUpdate) {
         .send(chatId, bot)
 }
 
-@CommandHandler(["export"])
+@CommandHandler(["/export"])
 suspend fun export(bot: TelegramBot, up: MessageUpdate) {
     val chat = up.message.chat
-    val allTasks = store.transactional {
-        chatTasks(chat.id).toList().map { Task(it) }
+    val allTopics = store.transactional {
+        chatTasks(chat.id).toList().map { Topic(it) }
     }
-    val data = Json.encodeToString(allTasks)
+    val data = Json.encodeToString(allTopics)
     sendMediaGroup(
         InputMedia.Document(
             ImplicitFile.InpFile(
                 InputFile(
                     data.toByteArray(UTF_8),
-                    LocalDateTime.now().toString(),
+                    "export-${up.message.chat.id}-${LocalDateTime.now()}.json",
                     "application/json"
                 )
             )
@@ -231,8 +236,84 @@ suspend fun export(bot: TelegramBot, up: MessageUpdate) {
     ).send(chat, bot)
 }
 
+@CommandHandler(["/import"])
+suspend fun import(bot: TelegramBot, up: MessageUpdate) {
+    message("Please upload previously exported file or type 'abort' to abort import").send(up.message.chat, bot)
+    bot.inputListener.setChain(up.user, Import)
+}
+
+@InputChain
+class TopicsImport {
+    object Import : ChainLink() {
+        override val breakCondition: BreakCondition = BreakCondition { _, update, _ -> update.text == "abort" }
+
+        override suspend fun action(user: User, update: ProcessedUpdate, bot: TelegramBot) {
+            if (update !is MessageUpdate) return
+
+            val fileId =
+                update.message.document?.fileId ?: return message("You should upload file").send(
+                    update.message.chat,
+                    bot
+                )
+            val filePath = getFile(fileId)
+                .sendAsync(bot)
+                .await()
+                .getOrNull()
+                ?.filePath
+                ?: return message("File does not exist").send(update.message.chat, bot)
+            val topics = Json.decodeFromStream<List<Topic>>(withContext(Dispatchers.IO) {
+                URI("https://api.telegram.org/file/bot${config.bot.token.value}/$filePath").toURL().openStream().buffered()
+            })
+            message(
+                "Going to delete all topics and rewrite with new ones (${topics.size} in total)"
+            )
+                .forceReply(selective = true)
+                .replyKeyboardMarkup {
+                    +"YES"
+                    +"NO"
+
+                }
+                .send(update.message.chat, bot)
+            bot.userData.set(update.message.chat.id, "topics", topics)
+        }
+
+        override suspend fun breakAction(user: User, update: ProcessedUpdate, bot: TelegramBot) {
+            message("OK, import aborted").send(update.update.message?.chat ?: return, bot)
+        }
+    }
+
+    object AcceptImport : ChainLink() {
+        override val breakCondition: BreakCondition = BreakCondition { _, update, _ -> update.text != "YES" }
+
+        override suspend fun action(user: User, update: ProcessedUpdate, bot: TelegramBot) {
+            if (update !is MessageUpdate) return
+            val cid = update.update.message?.chat?.id ?: return
+            store.transactional {
+                XdTask.filter { it.chatId eq cid }.asSequence().forEach {
+                    it.delete()
+                }
+                bot.userData.get<List<Topic>>(update.message.chat.id, "topics")?.forEach {
+                    XdTask.new {
+                        createdAt = it.createdAt
+                        author = it.author
+                        authorName = it.authorName
+                        text = it.text
+                        chatId = update.message.chat.id
+                    }
+                }
+            }
+            message("Done. Updated topics list:").replyKeyboardRemove().send(cid, bot)
+            topics(bot, update)
+        }
+
+        override suspend fun breakAction(user: User, update: ProcessedUpdate, bot: TelegramBot) {
+            message("Aborting import").replyKeyboardRemove().send(update.update.message?.chat ?: return, bot)
+        }
+    }
+}
+
 @Serializable
-data class Task(
+data class Topic(
     val text: String,
     val author: Long,
     val authorName: String,
