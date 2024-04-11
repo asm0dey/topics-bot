@@ -16,6 +16,7 @@ class CleanDB {
 
     object Try : ChainLink() {
         override val breakCondition = BreakCondition { _, update, _ -> update.text != DB_DELETE_YES }
+        override val retryAfterBreak: Boolean = false
 
         override suspend fun action(user: User, update: ProcessedUpdate, bot: TelegramBot) {
             val to = bot.userData.get<Long>(user.id, "deletingInChat") ?: return
