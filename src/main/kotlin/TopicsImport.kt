@@ -15,7 +15,8 @@ import java.net.URI
 @InputChain
 class TopicsImport {
     object Import : ChainLink() {
-        override val breakCondition: BreakCondition = BreakCondition { _, update, _ -> update.text == "abort" }
+        override val breakCondition: BreakCondition =
+            BreakCondition { _, update, _ -> update.update.message?.document?.fileId == null }
         override val retryAfterBreak: Boolean = false
 
         override suspend fun action(user: User, update: ProcessedUpdate, bot: TelegramBot) {
@@ -43,14 +44,14 @@ class TopicsImport {
                 .replyKeyboardMarkup {
                     +"YES"
                     +"NO"
-
                 }
                 .send(update.message.chat, bot)
             bot.userData.set(update.message.chat.id, "topics", topics)
         }
 
         override suspend fun breakAction(user: User, update: ProcessedUpdate, bot: TelegramBot) {
-            message("OK, import aborted").send(update.update.message?.chat ?: return, bot)
+            message("OK, import aborted").replyKeyboardRemove().send(update.update.message?.chat ?: return, bot)
+            bot.userData.del(update.update.message?.chat?.id ?: return, "topics")
         }
     }
 
