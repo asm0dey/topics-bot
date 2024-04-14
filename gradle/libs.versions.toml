@@ -39,7 +39,7 @@ kotlinx-serialization = "1.6.3"
 
 [libraries]
 
-telegram-bot = "eu.vendeli:telegram-bot:5.1.0"
+telegram-bot = "eu.vendeli:telegram-bot:5.2.0"
 telegram-ksp = {group="eu.vendeli", name="ksp", version.ref="kotlin-telegram"}
 
 hoplite = {group="com.sksamuel.hoplite", name="hoplite-core", version.ref="hoplite"}
