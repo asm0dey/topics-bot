@@ -104,7 +104,7 @@ private const val PAGE_SIZE = 9
 suspend fun topics(bot: TelegramBot, upd: MessageUpdate) {
     val topicsCount = countTopicsInChat(upd.message.chat.id)
     val (ids, text) = store.transactional {
-        val toList = chatTasks(upd.message.chat.id)
+        val toList = chatTopics(upd.message.chat.id)
             .take(PAGE_SIZE)
             .toList()
         toList.map { it.xdId } to toList.textTopics()
@@ -162,7 +162,7 @@ suspend fun updateTopicsMessage(bot: TelegramBot, up: CallbackQueryUpdate) {
     if (up.text.startsWith(pagePrefix)) {
         val page = up.text.substringAfter(pagePrefix).toInt()
         val (ids, topics) = store.transactional {
-            val q = chatTasks(chatId).drop(PAGE_SIZE * page).take(PAGE_SIZE)
+            val q = chatTopics(chatId).drop(PAGE_SIZE * page).take(PAGE_SIZE)
             q.asIterable().map { it.xdId } to q.asIterable().textTopics(page)
         }
 
@@ -181,7 +181,7 @@ suspend fun updateTopicsMessage(bot: TelegramBot, up: CallbackQueryUpdate) {
             }.send(chatId, bot)
     } else if (up.text == "${TOPIC_PREFIX}refresh") {
         val (ids, text) = store.transactional {
-            val tasks = chatTasks(chatId)
+            val tasks = chatTopics(chatId)
                 .take(PAGE_SIZE)
                 .asIterable()
             tasks.map { it.xdId } to tasks.textTopics()
@@ -214,7 +214,7 @@ suspend fun deleteMany(bot: TelegramBot, up: CallbackQueryUpdate) {
 suspend fun export(bot: TelegramBot, up: MessageUpdate) {
     val chat = up.message.chat
     val allTopics = store.transactional {
-        chatTasks(chat.id).toList().map { Topic(it) }
+        chatTopics(chat.id).toList().map { Topic(it) }
     }
     val data = Json.encodeToString(allTopics)
     sendMediaGroup(
@@ -275,9 +275,9 @@ suspend fun delete(bot: TelegramBot, up: CallbackQueryUpdate) {
     }
 }
 
-private fun chatTasks(chatId: Long) = XdTask
+private fun chatTopics(chatId: Long) = XdTask
     .filter { it.chatId eq chatId and (it.finishedAt eq null) }
-    .sortedBy(XdTask::createdAt, asc = false)
+    .sortedBy(XdTask::createdAt, asc = true)
 
 private fun InlineKeyboardMarkupBuilder.firstPageButtons(topicsCount: Int, ids: Iterable<String>) {
     if (topicsCount > PAGE_SIZE) {

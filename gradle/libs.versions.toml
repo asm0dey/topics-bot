@@ -4,16 +4,7 @@
 
 org-jetbrains-kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 
-com-google-devtools-ksp = { id = "com.google.devtools.ksp", version = "1.9.23-1.0.20" }
-##                                                               ⬆ = "2.0.0-Beta1-1.0.14" }
-##                                                               ⬆ = "2.0.0-Beta1-1.0.15" }
-##                                                               ⬆ = "2.0.0-Beta2-1.0.16" }
-##                                                               ⬆ = "2.0.0-Beta3-1.0.17" }
-##                                                               ⬆ = "2.0.0-Beta4-1.0.17" }
-##                                                               ⬆ = "2.0.0-Beta4-1.0.18" }
-##                                                               ⬆ = "2.0.0-Beta4-1.0.19" }
-##                                                               ⬆ = "2.0.0-Beta5-1.0.19" }
-##                                                               ⬆ = "2.0.0-Beta5-1.0.20" }
+com-google-devtools-ksp = { id = "com.google.devtools.ksp", version.ref="ksp" }
 
 shadow = { id = "com.github.johnrengelman.shadow", version = "8.1.1" }
 
@@ -23,23 +14,35 @@ org-jetbrains-kotlin-plugin-serialization = { id = "org.jetbrains.kotlin.plugin.
 
 [versions]
 
-kotlin = "1.9.23"
+kotlin = "2.0.0-RC1"
 ##  ⬆ = "2.0.0-Beta1"
 ##  ⬆ = "2.0.0-Beta2"
 ##  ⬆ = "2.0.0-Beta3"
 ##  ⬆ = "2.0.0-Beta4"
 ##  ⬆ = "2.0.0-Beta5"
+##  ⬆ = "2.0.0-RC1"
 
 hoplite="2.7.5"
 
-kotlin-telegram="5.1.0"
+kotlin-telegram="5.2.0"
 tinylog="2.7.0"
 
 kotlinx-serialization = "1.6.3"
+ksp="2.0.0-RC1-1.0.20"
+##⬆= "2.0.0-Beta1-1.0.14"
+##⬆= "2.0.0-Beta1-1.0.15"
+##⬆= "2.0.0-Beta2-1.0.16"
+##⬆= "2.0.0-Beta3-1.0.17"
+##⬆= "2.0.0-Beta4-1.0.17"
+##⬆= "2.0.0-Beta4-1.0.18"
+##⬆= "2.0.0-Beta4-1.0.19"
+##⬆= "2.0.0-Beta5-1.0.19"
+##⬆= "2.0.0-Beta5-1.0.20"
+##⬆= "2.0.0-RC1-1.0.20"
 
 [libraries]
 
-telegram-bot = "eu.vendeli:telegram-bot:5.1.0"
+telegram-bot = {group="eu.vendeli", name="telegram-bot", version.ref="kotlin-telegram"}
 telegram-ksp = {group="eu.vendeli", name="ksp", version.ref="kotlin-telegram"}
 
 hoplite = {group="com.sksamuel.hoplite", name="hoplite-core", version.ref="hoplite"}
@@ -60,41 +63,12 @@ dnq = "org.jetbrains.xodus:dnq:2.0.0"
 
 kotlin-scripting-compiler-embeddable = { group = "org.jetbrains.kotlin", name = "kotlin-scripting-compiler-embeddable", version.ref = "kotlin" }
 
-symbol-processing = "com.google.devtools.ksp:symbol-processing:1.9.23-1.0.20"
-##                                                         ⬆ :2.0.0-Beta1-1.0.14"
-##                                                         ⬆ :2.0.0-Beta1-1.0.15"
-##                                                         ⬆ :2.0.0-Beta2-1.0.16"
-##                                                         ⬆ :2.0.0-Beta3-1.0.17"
-##                                                         ⬆ :2.0.0-Beta4-1.0.17"
-##                                                         ⬆ :2.0.0-Beta4-1.0.18"
-##                                                         ⬆ :2.0.0-Beta4-1.0.19"
-##                                                         ⬆ :2.0.0-Beta5-1.0.19"
-##                                                         ⬆ :2.0.0-Beta5-1.0.20"
+symbol-processing = { group = "com.google.devtools.ksp", name = "symbol-processing", version.ref = "ksp" }
 
 kotlin-serialization-compiler-plugin-embeddable = { group = "org.jetbrains.kotlin", name = "kotlin-serialization-compiler-plugin-embeddable", version.ref = "kotlin" }
 
-ksp = "eu.vendeli:ksp:5.1.0"
+symbol-processing-api = { group = "com.google.devtools.ksp", name = "symbol-processing-api", version.ref = "ksp" }
 
-symbol-processing-api = "com.google.devtools.ksp:symbol-processing-api:1.9.23-1.0.20"
-##                                                                 ⬆ :2.0.0-Beta1-1.0.14"
-##                                                                 ⬆ :2.0.0-Beta1-1.0.15"
-##                                                                 ⬆ :2.0.0-Beta2-1.0.16"
-##                                                                 ⬆ :2.0.0-Beta3-1.0.17"
-##                                                                 ⬆ :2.0.0-Beta4-1.0.17"
-##                                                                 ⬆ :2.0.0-Beta4-1.0.18"
-##                                                                 ⬆ :2.0.0-Beta4-1.0.19"
-##                                                                 ⬆ :2.0.0-Beta5-1.0.19"
-##                                                                 ⬆ :2.0.0-Beta5-1.0.20"
-
-symbol-processing-cmdline = "com.google.devtools.ksp:symbol-processing-cmdline:1.9.23-1.0.20"
-##                                                                         ⬆ :2.0.0-Beta1-1.0.14"
-##                                                                         ⬆ :2.0.0-Beta1-1.0.15"
-##                                                                         ⬆ :2.0.0-Beta2-1.0.16"
-##                                                                         ⬆ :2.0.0-Beta3-1.0.17"
-##                                                                         ⬆ :2.0.0-Beta4-1.0.17"
-##                                                                         ⬆ :2.0.0-Beta4-1.0.18"
-##                                                                         ⬆ :2.0.0-Beta4-1.0.19"
-##                                                                         ⬆ :2.0.0-Beta5-1.0.19"
-##                                                                         ⬆ :2.0.0-Beta5-1.0.20"
+symbol-processing-cmdline = { group = "com.google.devtools.ksp", name = "symbol-processing-cmdline", version.ref = "ksp" }
 
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
