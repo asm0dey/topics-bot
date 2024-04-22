@@ -16,20 +16,12 @@ import eu.vendeli.tgbot.types.media.InputMedia
 import eu.vendeli.tgbot.utils.builders.InlineKeyboardMarkupBuilder
 import eu.vendeli.tgbot.utils.setChain
 import jetbrains.exodus.database.TransientEntityStore
-import jetbrains.exodus.entitystore.Entity
 import kotlinx.coroutines.delay
-import kotlinx.dnq.*
+import kotlinx.dnq.XdModel
 import kotlinx.dnq.query.*
 import kotlinx.dnq.store.container.StaticStoreContainer
 import kotlinx.dnq.util.initMetaData
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.descriptors.PrimitiveKind.STRING
-import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
-import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
 import org.joda.time.DateTime
 import org.joda.time.LocalDateTime
@@ -41,17 +33,6 @@ suspend fun main() {
 
     bot.handleUpdates()
     // start long-polling listener
-}
-
-class XdTask(entity: Entity) : XdEntity(entity) {
-    companion object : XdNaturalEntityType<XdTask>()
-
-    var text by xdRequiredStringProp(unique = true, trimmed = true)
-    var author by xdRequiredLongProp()
-    var createdAt by xdRequiredDateTimeProp()
-    var finishedAt by xdDateTimeProp()
-    var authorName by xdRequiredStringProp()
-    var chatId by xdRequiredLongProp()
 }
 
 fun initXodus(): TransientEntityStore {
@@ -72,7 +53,7 @@ fun initXodus(): TransientEntityStore {
 val store by lazy { initXodus() }
 
 
-@RegexCommandHandler("/addtopic ?.*")
+@RegexCommandHandler("/addtopic ?.*", options = [RegexOption.DOT_MATCHES_ALL])
 suspend fun addtopic(user: User, bot: TelegramBot, update: MessageUpdate) {
     store.transactional {
         XdTask.new {
@@ -86,7 +67,7 @@ suspend fun addtopic(user: User, bot: TelegramBot, update: MessageUpdate) {
     message { "Added. Thanks ${user.username}" }.send(update.message.chat.id, bot)
 }
 
-@RegexCommandHandler("/broadcast ?.*")
+@RegexCommandHandler("/broadcast ?.*", options = [RegexOption.DOT_MATCHES_ALL])
 suspend fun broadcast(bot: TelegramBot, up: MessageUpdate) {
     if (up.user.id != config.bot.admin) return
     val chatsToSend = store.transactional {
@@ -127,7 +108,11 @@ private fun Iterable<XdTask>.textTopics(page: Int = 0) =
         "${(index + 1).toString().padStart(2, '0')}. \uD83D\uDCCC" +
                 "${xdTask.text} by [${xdTask.authorName}](tg://user?=${xdTask.author}) _(${xdTask.createdAt.toLocalDate()})_"
     }
-        .joinToString("\n", postfix = "\n---\nPage ${page + 1}")
+        .joinToString(
+            "\n", postfix = """
+---
+Page ${page + 1}"""
+        )
 
 @CommandHandler(["/start"])
 suspend fun start(user: User, bot: TelegramBot) {
@@ -153,7 +138,7 @@ suspend fun myid(bot: TelegramBot, user: User) {
     message { "`${user.id}`" }.options { parseMode = Markdown }.send(user, bot)
 }
 
-@RegexCommandHandler(value = "$TOPIC_PREFIX.*")
+@RegexCommandHandler(value = "$TOPIC_PREFIX.*", options = [RegexOption.DOT_MATCHES_ALL])
 suspend fun updateTopicsMessage(bot: TelegramBot, up: CallbackQueryUpdate) {
     val chatId = up.callbackQuery.message?.chat?.id ?: return
     val topicsCount = countTopicsInChat(chatId)
@@ -173,7 +158,7 @@ suspend fun updateTopicsMessage(bot: TelegramBot, up: CallbackQueryUpdate) {
                     callbackData("<< Prev") { "${TOPIC_PREFIX}page=${page - 1}" }
                 if (PAGE_SIZE * page + PAGE_SIZE < topicsCount)
                     callbackData("Next >>") { "${TOPIC_PREFIX}page=${page + 1}" }
-                if (page != 0 || PAGE_SIZE * page + PAGE_SIZE < topicsCount)
+                if (page != 0 || PAGE_SIZE < topicsCount)
                     br()
                 callbackData("Refresh") { "${TOPIC_PREFIX}refresh" }
                 br()
@@ -193,7 +178,7 @@ suspend fun updateTopicsMessage(bot: TelegramBot, up: CallbackQueryUpdate) {
     }
 }
 
-@RegexCommandHandler("deleteMany=.*")
+@RegexCommandHandler("deleteMany=.*",options = [RegexOption.DOT_MATCHES_ALL])
 suspend fun deleteMany(bot: TelegramBot, up: CallbackQueryUpdate) {
     val ids: List<String> = up.text.substringAfter("deleteMany=").split("&")
     val chatId = up.callbackQuery.message?.chat?.id ?: return
@@ -236,29 +221,7 @@ suspend fun import(bot: TelegramBot, up: MessageUpdate) {
     bot.inputListener.setChain(up.user, Import)
 }
 
-@Serializable
-data class Topic(
-    val text: String,
-    val author: Long,
-    val authorName: String,
-    @Serializable(with = JodaDateTimeSerializer::class)
-    val createdAt: DateTime
-) {
-    constructor(it: XdTask) : this(it.text, it.author, it.authorName, it.createdAt)
-}
-
-class JodaDateTimeSerializer : KSerializer<DateTime> {
-    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("DateTime", STRING)
-
-    override fun deserialize(decoder: Decoder): DateTime = DateTime.parse(decoder.decodeString())
-
-    override fun serialize(encoder: Encoder, value: DateTime) {
-        encoder.encodeString(value.toString())
-    }
-
-}
-
-@RegexCommandHandler("delete=.*")
+@RegexCommandHandler("delete=.*",options = [RegexOption.DOT_MATCHES_ALL])
 suspend fun delete(bot: TelegramBot, up: CallbackQueryUpdate) {
     val chatId = up.callbackQuery.message?.chat?.id ?: return
     val id = up.text.substringAfter("delete=")
