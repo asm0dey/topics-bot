@@ -9,7 +9,7 @@ import eu.vendeli.tgbot.api.media.sendMediaGroup
 import eu.vendeli.tgbot.api.message.deleteMessages
 import eu.vendeli.tgbot.api.message.editMessageText
 import eu.vendeli.tgbot.api.message.message
-import eu.vendeli.tgbot.types.ParseMode.Markdown
+import eu.vendeli.tgbot.types.ParseMode.MarkdownV2
 import eu.vendeli.tgbot.types.User
 import eu.vendeli.tgbot.types.internal.*
 import eu.vendeli.tgbot.types.media.InputMedia
@@ -92,7 +92,7 @@ suspend fun topics(bot: TelegramBot, upd: MessageUpdate) {
     }
 
     message(text)
-        .options { parseMode = Markdown }
+        .options { parseMode = MarkdownV2 }
         .inlineKeyboardMarkup { firstPageButtons(topicsCount, ids) }
         .sendAsync(to = upd.message.chat.id, via = bot)
         .await()
@@ -135,7 +135,7 @@ suspend fun cleandb(bot: TelegramBot, up: MessageUpdate, user: User) {
 
 @CommandHandler(["/myid"])
 suspend fun myid(bot: TelegramBot, user: User) {
-    message { "`${user.id}`" }.options { parseMode = Markdown }.send(user, bot)
+    message { "`${user.id}`" }.options { parseMode = MarkdownV2 }.send(user, bot)
 }
 
 @RegexCommandHandler(value = "$TOPIC_PREFIX.*", options = [RegexOption.DOT_MATCHES_ALL])
@@ -152,7 +152,7 @@ suspend fun updateTopicsMessage(bot: TelegramBot, up: CallbackQueryUpdate) {
         }
 
         editMessageText(messageId ?: return) { topics }
-            .options { parseMode = Markdown }
+            .options { parseMode = MarkdownV2 }
             .inlineKeyboardMarkup {
                 if (page != 0)
                     callbackData("<< Prev") { "${TOPIC_PREFIX}page=${page - 1}" }
@@ -172,7 +172,7 @@ suspend fun updateTopicsMessage(bot: TelegramBot, up: CallbackQueryUpdate) {
             tasks.map { it.xdId } to tasks.textTopics()
         }
         editMessageText(messageId ?: return) { text }
-            .options { parseMode = Markdown }
+            .options { parseMode = MarkdownV2 }
             .inlineKeyboardMarkup { firstPageButtons(topicsCount, ids) }
             .send(chatId, bot)
     }
