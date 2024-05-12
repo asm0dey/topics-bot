@@ -18,7 +18,7 @@ kotlin = "2.0.0-RC1"
 
 hoplite="2.7.5"
 
-kotlin-telegram="5.3.1"
+kotlin-telegram="5.4.0"
 tinylog="2.7.0"
 
 kotlinx-serialization = "1.6.3"
