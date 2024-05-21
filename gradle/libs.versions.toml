@@ -14,7 +14,7 @@ org-jetbrains-kotlin-plugin-serialization = { id = "org.jetbrains.kotlin.plugin.
 
 [versions]
 
-kotlin = "2.0.0-RC1"
+kotlin = "2.0.0"
 
 hoplite="2.7.5"
 
