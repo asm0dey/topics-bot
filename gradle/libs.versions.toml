@@ -22,7 +22,7 @@ kotlin-telegram="5.3.1"
 tinylog="2.7.0"
 
 kotlinx-serialization = "1.6.3"
-ksp="2.0.0-RC1-1.0.20"
+ksp="2.0.0-1.0.21"
 
 [libraries]
 
