@@ -14,6 +14,6 @@ jobs:
       name: My workflow
       steps:
         - name: Execute Action Graph
-          uses: actionforge/action@5636645834e4a75cbc8c6c204e872ddc27632738 # v0.9.52
+          uses: actionforge/action@346e5bce9c84f281653913c47709ad64d1772f66 # v0.9.62
           with:
             graph_file: new-1.yml
