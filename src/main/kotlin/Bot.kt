@@ -5,17 +5,16 @@ import eu.vendeli.tgbot.TelegramBot
 import eu.vendeli.tgbot.annotations.CommandHandler
 import eu.vendeli.tgbot.annotations.CommonHandler
 import eu.vendeli.tgbot.annotations.UnprocessedHandler
-import eu.vendeli.tgbot.api.media.sendMediaGroup
+import eu.vendeli.tgbot.api.media.sendDocument
 import eu.vendeli.tgbot.api.message.deleteMessages
 import eu.vendeli.tgbot.api.message.editMessageText
 import eu.vendeli.tgbot.api.message.message
-import eu.vendeli.tgbot.generated.userData
 import eu.vendeli.tgbot.types.ParseMode.MarkdownV2
 import eu.vendeli.tgbot.types.User
 import eu.vendeli.tgbot.types.internal.*
-import eu.vendeli.tgbot.types.media.InputMedia
 import eu.vendeli.tgbot.utils.builders.InlineKeyboardMarkupBuilder
 import eu.vendeli.tgbot.utils.setChain
+import eu.vendeli.tgbot.utils.toImplicitFile
 import jetbrains.exodus.database.TransientEntityStore
 import kotlinx.coroutines.delay
 import kotlinx.dnq.XdModel
@@ -95,7 +94,7 @@ suspend fun topics(bot: TelegramBot, upd: MessageUpdate) {
     message(text)
         .options { parseMode = MarkdownV2 }
         .inlineKeyboardMarkup { firstPageButtons(topicsCount, ids) }
-        .sendAsync(to = upd.message.chat.id, via = bot)
+        .sendAsync(to = upd.message.chat, via = bot)
         .await()
         .getOrNull()
 }
@@ -130,7 +129,7 @@ suspend fun cleandb(bot: TelegramBot, up: MessageUpdate, user: User) {
         }
             .send(up.message.chat, bot)
         bot.inputListener.setChain(up.user, CleanDB.Try)
-        bot.userData[up.user, "deletingInChat"] = up.message.chat.id.toString()
+        CleanDB.Try.state.set(user, up.message.chat.id)
     } else message { "Only the bot owner can do it, bro" }.send(up.message.chat, bot)
 }
 
@@ -179,7 +178,7 @@ suspend fun updateTopicsMessage(bot: TelegramBot, up: CallbackQueryUpdate) {
     }
 }
 
-@CommonHandler.Regex("deleteMany=.*",options = [RegexOption.DOT_MATCHES_ALL])
+@CommonHandler.Regex("deleteMany=.*", options = [RegexOption.DOT_MATCHES_ALL])
 suspend fun deleteMany(bot: TelegramBot, up: CallbackQueryUpdate) {
     val ids: List<String> = up.text.substringAfter("deleteMany=").split("&")
     val chatId = up.callbackQuery.message?.chat?.id ?: return
@@ -203,16 +202,12 @@ suspend fun export(bot: TelegramBot, up: MessageUpdate) {
         chatTopics(chat.id).toList().map { Topic(it) }
     }
     val data = Json.encodeToString(allTopics)
-    sendMediaGroup(
-        InputMedia.Document(
-            ImplicitFile.InpFile(
-                InputFile(
-                    data.toByteArray(UTF_8),
-                    "export-${up.message.chat.id}-${LocalDateTime.now()}.json",
-                    "application/json"
-                )
-            )
-        )
+    sendDocument(
+        InputFile(
+            data.toByteArray(UTF_8),
+            "export-${up.message.chat.id}-${LocalDateTime.now()}.json",
+            "application/json"
+        ).toImplicitFile()
     ).send(chat, bot)
 }
 
@@ -222,7 +217,7 @@ suspend fun import(bot: TelegramBot, up: MessageUpdate) {
     bot.inputListener.setChain(up.user, Import)
 }
 
-@CommonHandler.Regex("delete=.*",options = [RegexOption.DOT_MATCHES_ALL])
+@CommonHandler.Regex("delete=.*", options = [RegexOption.DOT_MATCHES_ALL])
 suspend fun delete(bot: TelegramBot, up: CallbackQueryUpdate) {
     val chatId = up.callbackQuery.message?.chat?.id ?: return
     val id = up.text.substringAfter("delete=")

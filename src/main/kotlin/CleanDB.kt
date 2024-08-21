@@ -15,12 +15,12 @@ class CleanDB {
         const val DB_DELETE_NO = "NO"
     }
 
-    object Try : ChainLink() {
+    object Try : CleanDbLink() {
         override val breakCondition = BreakCondition { _, update, _ -> update.text != DB_DELETE_YES }
         override val retryAfterBreak: Boolean = false
 
-        override suspend fun action(user: User, update: ProcessedUpdate, bot: TelegramBot) {
-            val to = bot.userData[user.id, "deletingInChat"]?.toLongOrNull() ?: return
+        override suspend fun action(user: User, update: ProcessedUpdate, bot: TelegramBot): Long? {
+            val to = state.get(user) ?: return null
             store.transactional {
                 XdTask.all().toList().forEach {
                     it.delete()
@@ -29,14 +29,15 @@ class CleanDB {
             message { "Okay boss. Gotcha" }
                 .replyKeyboardRemove(false)
                 .send(to, bot)
-            bot.userData.del(user.id, "deletingInChat")
+            state.del(user)
+            return null
         }
 
         override suspend fun breakAction(user: User, update: ProcessedUpdate, bot: TelegramBot) {
             message { "ABORT! I REPEAT ABORT!" }
                 .replyKeyboardRemove(false)
-                .send(bot.userData[user.id, "deletingInChat"]?.toLongOrNull() ?: return, bot)
-            bot.userData.del(user.id, "deletingInChat")
+                .send(state.get(user) ?: return, bot)
+            state.del(user)
         }
     }
 }
