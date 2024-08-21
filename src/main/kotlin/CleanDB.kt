@@ -1,6 +1,7 @@
 import eu.vendeli.tgbot.TelegramBot
 import eu.vendeli.tgbot.annotations.InputChain
 import eu.vendeli.tgbot.api.message.message
+import eu.vendeli.tgbot.generated.userData
 import eu.vendeli.tgbot.types.User
 import eu.vendeli.tgbot.types.internal.BreakCondition
 import eu.vendeli.tgbot.types.internal.ChainLink
@@ -19,7 +20,7 @@ class CleanDB {
         override val retryAfterBreak: Boolean = false
 
         override suspend fun action(user: User, update: ProcessedUpdate, bot: TelegramBot) {
-            val to = bot.userData.get<Long>(user.id, "deletingInChat") ?: return
+            val to = bot.userData[user.id, "deletingInChat"]?.toLongOrNull() ?: return
             store.transactional {
                 XdTask.all().toList().forEach {
                     it.delete()
@@ -34,7 +35,7 @@ class CleanDB {
         override suspend fun breakAction(user: User, update: ProcessedUpdate, bot: TelegramBot) {
             message { "ABORT! I REPEAT ABORT!" }
                 .replyKeyboardRemove(false)
-                .send(bot.userData.get<Long>(user.id, "deletingInChat") ?: return, bot)
+                .send(bot.userData[user.id, "deletingInChat"]?.toLongOrNull() ?: return, bot)
             bot.userData.del(user.id, "deletingInChat")
         }
     }

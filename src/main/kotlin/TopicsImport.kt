@@ -2,6 +2,7 @@ import eu.vendeli.tgbot.TelegramBot
 import eu.vendeli.tgbot.annotations.InputChain
 import eu.vendeli.tgbot.api.getFile
 import eu.vendeli.tgbot.api.message.message
+import eu.vendeli.tgbot.generated.userData
 import eu.vendeli.tgbot.types.User
 import eu.vendeli.tgbot.types.internal.*
 import kotlinx.coroutines.Dispatchers
@@ -10,32 +11,32 @@ import kotlinx.dnq.query.asSequence
 import kotlinx.dnq.query.filter
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
-import java.net.URI
 
 @InputChain
 class TopicsImport {
-    object Import : ChainLink() {
+    object Import : TopicsLink() {
         override val breakCondition: BreakCondition =
-            BreakCondition { _, update, _ -> update.update.message?.document?.fileId == null }
+            BreakCondition { _, update, _ -> update.origin.message?.document?.fileId == null }
         override val retryAfterBreak: Boolean = false
 
-        override suspend fun action(user: User, update: ProcessedUpdate, bot: TelegramBot) {
-            if (update !is MessageUpdate) return
+        override suspend fun action(user: User, update: ProcessedUpdate, bot: TelegramBot): List<Topic> {
+            if (update !is MessageUpdate) return emptyList()
 
             val fileId =
-                update.message.document?.fileId ?: return message("You should upload file").send(
-                    update.message.chat,
-                    bot
-                )
-            val filePath = getFile(fileId)
+                update.message.document?.fileId ?: return emptyList<Topic>().also {
+                    message("You should upload file").send(
+                        update.message.chat,
+                        bot
+                    )
+                }
+
+            val tgFile = getFile(fileId)
                 .sendAsync(bot)
                 .await()
                 .getOrNull()
-                ?.filePath
-                ?: return message("File does not exist").send(update.message.chat, bot)
+                ?: return message("File does not exist").send(update.message.chat, bot).let { emptyList() }
             val topics = Json.decodeFromStream<List<Topic>>(withContext(Dispatchers.IO) {
-                URI("https://api.telegram.org/file/bot${config.bot.token.value}/$filePath").toURL().openStream()
-                    .buffered()
+                bot.getFileContent(tgFile)!!.inputStream()
             })
             message(
                 "Going to delete all topics and rewrite with new ones (${topics.size} in total)"
@@ -46,12 +47,14 @@ class TopicsImport {
                     +"NO"
                 }
                 .send(update.message.chat, bot)
-            bot.userData.set(update.message.chat.id, "topics", topics)
+
+            Import.state.set(update.message.chat.asUser(), topics)
+            return topics
         }
 
         override suspend fun breakAction(user: User, update: ProcessedUpdate, bot: TelegramBot) {
-            message("OK, import aborted").replyKeyboardRemove().send(update.update.message?.chat ?: return, bot)
-            bot.userData.del(update.update.message?.chat?.id ?: return, "topics")
+            message("OK, import aborted").replyKeyboardRemove().send(update.origin.message?.chat ?: return, bot)
+            bot.userData.del(update.origin.message?.chat?.id ?: return, "topics")
         }
     }
 
@@ -61,12 +64,14 @@ class TopicsImport {
 
         override suspend fun action(user: User, update: ProcessedUpdate, bot: TelegramBot) {
             if (update !is MessageUpdate) return
-            val cid = update.update.message?.chat?.id ?: return
+            val cid = update.origin.message?.chat?.id ?: return
+            val topics = Import.state.get(update.message.chat.asUser())
             store.transactional {
                 XdTask.filter { it.chatId eq cid }.asSequence().forEach {
                     it.delete()
                 }
-                bot.userData.get<List<Topic>>(update.message.chat.id, "topics")?.forEach {
+
+                topics?.forEach {
                     XdTask.new {
                         createdAt = it.createdAt
                         author = it.author
@@ -81,7 +86,7 @@ class TopicsImport {
         }
 
         override suspend fun breakAction(user: User, update: ProcessedUpdate, bot: TelegramBot) {
-            message("Aborting import").replyKeyboardRemove().send(update.update.message?.chat ?: return, bot)
+            message("Aborting import").replyKeyboardRemove().send(update.origin.message?.chat ?: return, bot)
         }
     }
 }

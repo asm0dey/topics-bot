@@ -3,12 +3,13 @@ import CleanDB.Companion.DB_DELETE_YES
 import TopicsImport.Import
 import eu.vendeli.tgbot.TelegramBot
 import eu.vendeli.tgbot.annotations.CommandHandler
-import eu.vendeli.tgbot.annotations.RegexCommandHandler
+import eu.vendeli.tgbot.annotations.CommonHandler
 import eu.vendeli.tgbot.annotations.UnprocessedHandler
 import eu.vendeli.tgbot.api.media.sendMediaGroup
 import eu.vendeli.tgbot.api.message.deleteMessages
 import eu.vendeli.tgbot.api.message.editMessageText
 import eu.vendeli.tgbot.api.message.message
+import eu.vendeli.tgbot.generated.userData
 import eu.vendeli.tgbot.types.ParseMode.MarkdownV2
 import eu.vendeli.tgbot.types.User
 import eu.vendeli.tgbot.types.internal.*
@@ -53,7 +54,7 @@ fun initXodus(): TransientEntityStore {
 val store by lazy { initXodus() }
 
 
-@RegexCommandHandler("/addtopic ?.*", options = [RegexOption.DOT_MATCHES_ALL])
+@CommonHandler.Regex("/addtopic ?.*", options = [RegexOption.DOT_MATCHES_ALL])
 suspend fun addtopic(user: User, bot: TelegramBot, update: MessageUpdate) {
     store.transactional {
         XdTask.new {
@@ -67,7 +68,7 @@ suspend fun addtopic(user: User, bot: TelegramBot, update: MessageUpdate) {
     message { "Added. Thanks ${user.username}" }.send(update.message.chat.id, bot)
 }
 
-@RegexCommandHandler("/broadcast ?.*", options = [RegexOption.DOT_MATCHES_ALL])
+@CommonHandler.Regex("/broadcast ?.*", options = [RegexOption.DOT_MATCHES_ALL])
 suspend fun broadcast(bot: TelegramBot, up: MessageUpdate) {
     if (up.user.id != config.bot.admin) return
     val chatsToSend = store.transactional {
@@ -129,7 +130,7 @@ suspend fun cleandb(bot: TelegramBot, up: MessageUpdate, user: User) {
         }
             .send(up.message.chat, bot)
         bot.inputListener.setChain(up.user, CleanDB.Try)
-        bot.userData[up.user, "deletingInChat"] = up.message.chat.id
+        bot.userData[up.user, "deletingInChat"] = up.message.chat.id.toString()
     } else message { "Only the bot owner can do it, bro" }.send(up.message.chat, bot)
 }
 
@@ -138,7 +139,7 @@ suspend fun myid(bot: TelegramBot, user: User) {
     message { "`${user.id}`" }.options { parseMode = MarkdownV2 }.send(user, bot)
 }
 
-@RegexCommandHandler(value = "$TOPIC_PREFIX.*", options = [RegexOption.DOT_MATCHES_ALL])
+@CommonHandler.Regex(value = "$TOPIC_PREFIX.*", options = [RegexOption.DOT_MATCHES_ALL])
 suspend fun updateTopicsMessage(bot: TelegramBot, up: CallbackQueryUpdate) {
     val chatId = up.callbackQuery.message?.chat?.id ?: return
     val topicsCount = countTopicsInChat(chatId)
@@ -178,7 +179,7 @@ suspend fun updateTopicsMessage(bot: TelegramBot, up: CallbackQueryUpdate) {
     }
 }
 
-@RegexCommandHandler("deleteMany=.*",options = [RegexOption.DOT_MATCHES_ALL])
+@CommonHandler.Regex("deleteMany=.*",options = [RegexOption.DOT_MATCHES_ALL])
 suspend fun deleteMany(bot: TelegramBot, up: CallbackQueryUpdate) {
     val ids: List<String> = up.text.substringAfter("deleteMany=").split("&")
     val chatId = up.callbackQuery.message?.chat?.id ?: return
@@ -221,7 +222,7 @@ suspend fun import(bot: TelegramBot, up: MessageUpdate) {
     bot.inputListener.setChain(up.user, Import)
 }
 
-@RegexCommandHandler("delete=.*",options = [RegexOption.DOT_MATCHES_ALL])
+@CommonHandler.Regex("delete=.*",options = [RegexOption.DOT_MATCHES_ALL])
 suspend fun delete(bot: TelegramBot, up: CallbackQueryUpdate) {
     val chatId = up.callbackQuery.message?.chat?.id ?: return
     val id = up.text.substringAfter("delete=")
