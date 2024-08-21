@@ -48,7 +48,6 @@ class TopicsImport {
                 }
                 .send(update.message.chat, bot)
 
-            Import.state.set(update.message.chat.asUser(), topics)
             return topics
         }
 
@@ -65,7 +64,7 @@ class TopicsImport {
         override suspend fun action(user: User, update: ProcessedUpdate, bot: TelegramBot) {
             if (update !is MessageUpdate) return
             val cid = update.origin.message?.chat?.id ?: return
-            val topics = Import.state.get(update.message.chat.asUser())
+            val topics = Import.state.get(update.message.chat)
             store.transactional {
                 XdTask.filter { it.chatId eq cid }.asSequence().forEach {
                     it.delete()

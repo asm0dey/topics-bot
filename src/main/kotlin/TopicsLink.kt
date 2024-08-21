@@ -1,7 +1,8 @@
-import eu.vendeli.tgbot.types.User
-import eu.vendeli.tgbot.types.chat.Chat
+import eu.vendeli.tgbot.types.internal.IdLong
+import eu.vendeli.tgbot.types.internal.chain.BaseLinkStateManager
+import eu.vendeli.tgbot.types.internal.chain.LinkStateManager
 import eu.vendeli.tgbot.types.internal.chain.StatefulLink
 
-abstract class TopicsLink : StatefulLink<List<Topic>>()
-
-fun Chat.asUser() = User(id, false, "")
+abstract class TopicsLink : StatefulLink<IdLong, List<Topic>>() {
+    override val state: LinkStateManager<IdLong, List<Topic>> = BaseLinkStateManager { it.origin.message?.chat }
+}
