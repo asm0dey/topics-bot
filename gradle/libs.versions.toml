@@ -16,15 +16,16 @@ telegram-bot = { id = "eu.vendeli.telegram-bot", version.ref = "kotlin-telegram"
 
 [versions]
 
-kotlin = "2.0.0"
+kotlin = "2.0.20"
 
 hoplite="2.7.5"
 
 kotlin-telegram="7.2.2"
 tinylog="2.7.0"
+## ⬆ = "2.8.0-M1"
 
 kotlinx-serialization = "1.7.1"
-ksp="2.0.0-1.0.21"
+ksp="2.0.20-1.0.24"
 
 [libraries]
 
@@ -39,6 +40,7 @@ tinylog-impl = "org.tinylog:tinylog-impl:2.7.0"
 xodus-dnq="org.jetbrains.xodus:dnq:2.0.0"
 
 tinylog-api-kotlin = "org.tinylog:tinylog-api-kotlin:2.7.0"
+##                                               ⬆ :2.8.0-M1"
 
 slf4j-tinylog = "org.tinylog:slf4j-tinylog:2.7.0"
 
