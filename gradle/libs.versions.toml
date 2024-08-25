@@ -12,22 +12,21 @@ com-github-johnrengelman-shadow = { id = "com.github.johnrengelman.shadow", vers
 
 org-jetbrains-kotlin-plugin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 
+telegram-bot = { id = "eu.vendeli.telegram-bot", version.ref = "kotlin-telegram"}
+
 [versions]
 
 kotlin = "2.0.0"
 
 hoplite="2.7.5"
 
-kotlin-telegram="5.4.0"
+kotlin-telegram="7.2.2"
 tinylog="2.7.0"
 
 kotlinx-serialization = "1.7.1"
 ksp="2.0.0-1.0.21"
 
 [libraries]
-
-telegram-bot = {group="eu.vendeli", name="telegram-bot", version.ref="kotlin-telegram"}
-telegram-ksp = {group="eu.vendeli", name="ksp", version.ref="kotlin-telegram"}
 
 hoplite = {group="com.sksamuel.hoplite", name="hoplite-core", version.ref="hoplite"}
 hoplite-toml = "com.sksamuel.hoplite:hoplite-toml:2.7.5"

@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.com.google.devtools.ksp)
     alias(libs.plugins.shadow)
     alias(libs.plugins.org.jetbrains.kotlin.plugin.serialization)
+    alias(libs.plugins.telegram.bot)
 
     application
 }
@@ -17,8 +18,6 @@ repositories {
 }
 
 dependencies {
-    implementation(libs.telegram.bot)
-    ksp(libs.telegram.ksp)
     implementation(libs.hoplite.toml)
     implementation(libs.tinylog.kotlin)
 //    implementation(libs.tinylog.slf4j)
