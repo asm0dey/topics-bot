@@ -24,7 +24,7 @@ kotlin-telegram="7.2.2"
 tinylog="2.7.0"
 ## ⬆ = "2.8.0-M1"
 
-kotlinx-serialization = "1.7.1"
+kotlinx-serialization = "1.7.3"
 ksp="2.0.20-1.0.24"
 
 [libraries]
