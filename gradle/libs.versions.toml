@@ -25,7 +25,7 @@ tinylog="2.7.0"
 ## ⬆ = "2.8.0-M1"
 
 kotlinx-serialization = "1.7.1"
-ksp="2.0.20-1.0.24"
+ksp="2.0.21-1.0.26"
 
 [libraries]
 
