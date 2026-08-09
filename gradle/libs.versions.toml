@@ -6,7 +6,7 @@ org-jetbrains-kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kot
 
 com-google-devtools-ksp = { id = "com.google.devtools.ksp", version.ref="ksp" }
 
-shadow = { id = "com.github.johnrengelman.shadow", version = "8.1.1" }
+shadow = { id = "com.gradleup.shadow", version = "9.6.1" }
 
 com-github-johnrengelman-shadow = { id = "com.github.johnrengelman.shadow", version = "8.1.1" }
 
@@ -16,24 +16,26 @@ telegram-bot = { id = "eu.vendeli.telegram-bot", version.ref = "kotlin-telegram"
 
 [versions]
 
-kotlin = "2.0.20"
+kotlin = "2.4.10"
+##  ⬆ = "2.4.20-Beta1"
+##  ⬆ = "2.4.20-Beta2"
 
 hoplite="2.7.5"
 
-kotlin-telegram="7.2.2"
+kotlin-telegram="9.6.0"
 tinylog="2.7.0"
 ## ⬆ = "2.8.0-M1"
 
-kotlinx-serialization = "1.7.1"
-ksp="2.0.20-1.0.24"
+kotlinx-serialization = "1.11.0"
+ksp="2.3.11"
 
 [libraries]
 
 hoplite = {group="com.sksamuel.hoplite", name="hoplite-core", version.ref="hoplite"}
-hoplite-toml = "com.sksamuel.hoplite:hoplite-toml:2.7.5"
-##                                            ⬆ :2.8.0.RC1"
-##                                            ⬆ :2.8.0.RC2"
-##                                            ⬆ :2.8.0.RC3"
+hoplite-toml = "com.sksamuel.hoplite:hoplite-toml:2.9.0"
+##                                            ⬆ :3.0.0.RC1"
+##                                            ⬆ :3.0.0.RC2"
+##                                            ⬆ :3.0.0.RC3"
 tinylog-slf4j={group="org.tinylog", name="slf4j-tinylog",version.ref="tinylog"}
 tinylog-kotlin={group="org.tinylog", name="tinylog-api-kotlin",version.ref="tinylog"}
 tinylog-impl = "org.tinylog:tinylog-impl:2.7.0"

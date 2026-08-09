@@ -1,6 +1,3 @@
-import CleanDB.Companion.DB_DELETE_NO
-import CleanDB.Companion.DB_DELETE_YES
-import TopicsImport.Import
 import eu.vendeli.tgbot.TelegramBot
 import eu.vendeli.tgbot.annotations.CommandHandler
 import eu.vendeli.tgbot.annotations.CommonHandler
@@ -9,12 +6,11 @@ import eu.vendeli.tgbot.api.media.sendDocument
 import eu.vendeli.tgbot.api.message.deleteMessages
 import eu.vendeli.tgbot.api.message.editMessageText
 import eu.vendeli.tgbot.api.message.message
-import eu.vendeli.tgbot.types.ParseMode.MarkdownV2
 import eu.vendeli.tgbot.types.User
-import eu.vendeli.tgbot.types.internal.*
+import eu.vendeli.tgbot.types.component.ParseMode.MarkdownV2
+import eu.vendeli.tgbot.types.component.*
 import eu.vendeli.tgbot.utils.builders.InlineKeyboardMarkupBuilder
-import eu.vendeli.tgbot.utils.setChain
-import eu.vendeli.tgbot.utils.toImplicitFile
+import eu.vendeli.tgbot.utils.common.toImplicitFile
 import jetbrains.exodus.database.TransientEntityStore
 import kotlinx.coroutines.delay
 import kotlinx.dnq.XdModel
@@ -94,7 +90,7 @@ suspend fun topics(bot: TelegramBot, upd: MessageUpdate) {
     message(text)
         .options { parseMode = MarkdownV2 }
         .inlineKeyboardMarkup { firstPageButtons(topicsCount, ids) }
-        .sendAsync(to = upd.message.chat, via = bot)
+        .sendReturning(to = upd.message.chat, via = bot)
         .await()
         .getOrNull()
 }
@@ -119,19 +115,6 @@ suspend fun start(user: User, bot: TelegramBot) {
     message { "Well hello hello" }.send(user, bot)
 }
 
-
-@CommandHandler(["/cleandb"])
-suspend fun cleandb(bot: TelegramBot, up: MessageUpdate, user: User) {
-    if (user.id == config.bot.admin) {
-        message { "Sure?" }.inlineKeyboardMarkup {
-            callbackData("yes") { DB_DELETE_YES }
-            callbackData("NO") { DB_DELETE_NO }
-        }
-            .send(up.message.chat, bot)
-        bot.inputListener.setChain(up.user, CleanDB.Try)
-        CleanDB.Try.state.set(user, up.message.chat.id)
-    } else message { "Only the bot owner can do it, bro" }.send(up.message.chat, bot)
-}
 
 @CommandHandler(["/myid"])
 suspend fun myid(bot: TelegramBot, user: User) {
@@ -203,18 +186,11 @@ suspend fun export(bot: TelegramBot, up: MessageUpdate) {
     }
     val data = Json.encodeToString(allTopics)
     sendDocument(
-        InputFile(
-            data.toByteArray(UTF_8),
+        data.toByteArray(UTF_8).toImplicitFile(
             "export-${up.message.chat.id}-${LocalDateTime.now()}.json",
             "application/json"
-        ).toImplicitFile()
+        )
     ).send(chat, bot)
-}
-
-@CommandHandler(["/import"])
-suspend fun import(bot: TelegramBot, up: MessageUpdate) {
-    message("Please upload previously exported file or type 'abort' to abort import").send(up.message.chat, bot)
-    bot.inputListener.setChain(up.user, Import)
 }
 
 @CommonHandler.Regex("delete=.*", options = [RegexOption.DOT_MATCHES_ALL])
@@ -228,7 +204,7 @@ suspend fun delete(bot: TelegramBot, up: CallbackQueryUpdate) {
         }
     }
     sourceMessageId?.let { deleteMessages(it).send(chatId, bot) }
-    message("Don't forget to refresh the task List").sendAsync(chatId, bot).await().getOrNull()?.messageId?.let {
+    message("Don't forget to refresh the task List").sendReturning(chatId, bot).await().getOrNull()?.messageId?.let {
         delay(10.seconds)
         deleteMessages(it).send(chatId, bot)
     }
