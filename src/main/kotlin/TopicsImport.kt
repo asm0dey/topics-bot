@@ -14,6 +14,7 @@ import kotlinx.dnq.query.asSequence
 import kotlinx.dnq.query.filter
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import org.tinylog.kotlin.Logger
 
 @WizardHandler(trigger = ["/import"])
 object ImportWizard {
@@ -79,6 +80,7 @@ object ImportWizard {
                     }
                 }
             }
+            Logger.info("Import: replaced topics in chat {} with {} imported", cid, topics.size)
             message("Done. Updated topics list:").replyKeyboardRemove().send(cid, ctx.bot)
             topics(ctx.bot, ctx.update as MessageUpdate)
             return Transition.Finish
@@ -86,10 +88,15 @@ object ImportWizard {
     }
 
     private suspend fun downloadTopics(bot: TelegramBot, fileId: String): List<Topic> {
-        val tgFile = getFile(fileId).sendReturning(bot).await().getOrNull() ?: return emptyList()
-        val bytes = withContext(Dispatchers.IO) { bot.getFileContent(tgFile) } ?: return emptyList()
+        val tgFile = getFile(fileId).sendReturning(bot).await().getOrNull()
+            ?: return emptyList<Topic>().also { Logger.warn("Import: file {} not resolvable", fileId) }
+        val bytes = withContext(Dispatchers.IO) { bot.getFileContent(tgFile) }
+            ?: return emptyList<Topic>().also { Logger.warn("Import: no content for file {}", fileId) }
         return runCatching { Json.decodeFromString<List<Topic>>(bytes.decodeToString()) }
-            .getOrElse { emptyList() }
+            .getOrElse {
+                Logger.warn(it, "Import: failed to parse topics from file {}", fileId)
+                emptyList()
+            }
     }
 
     private suspend fun topicsOf(ctx: WizardContext): List<Topic> =

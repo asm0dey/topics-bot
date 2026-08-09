@@ -5,6 +5,7 @@ import eu.vendeli.tgbot.types.chain.WizardContext
 import eu.vendeli.tgbot.types.chain.WizardStep
 import eu.vendeli.tgbot.types.component.getChat
 import kotlinx.dnq.query.toList
+import org.tinylog.kotlin.Logger
 
 @WizardHandler(trigger = ["/cleandb"])
 object CleanDbWizard {
@@ -27,6 +28,7 @@ object CleanDbWizard {
             if (ctx.user.id != config.bot.admin) return Transition.Finish
             if (ctx.update.text == "yes") {
                 store.transactional { XdTask.all().toList().forEach { it.delete() } }
+                Logger.warn("Admin {} wiped ALL topics", ctx.user.id)
                 message { "Okay boss. Gotcha" }.replyKeyboardRemove(false).send(chatId, ctx.bot)
             } else {
                 message { "ABORT! I REPEAT ABORT!" }.replyKeyboardRemove(false).send(chatId, ctx.bot)

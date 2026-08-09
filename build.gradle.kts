@@ -20,8 +20,8 @@ repositories {
 dependencies {
     implementation(libs.hoplite.toml)
     implementation(libs.tinylog.kotlin)
-//    implementation(libs.tinylog.slf4j)
-//    implementation(libs.tinylog.impl)
+    implementation(libs.tinylog.impl)
+    implementation(libs.tinylog.slf4j)
     implementation(libs.xodus.dnq)
     implementation(libs.kotlinx.serialization.json)
 }

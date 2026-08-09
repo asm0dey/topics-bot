@@ -19,22 +19,25 @@ import kotlinx.dnq.store.container.StaticStoreContainer
 import kotlinx.dnq.util.initMetaData
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import org.tinylog.kotlin.Logger
 import org.joda.time.DateTime
 import org.joda.time.LocalDateTime
 import kotlin.text.Charsets.UTF_8
 import kotlin.time.Duration.Companion.seconds
 
 suspend fun main() {
+    Logger.info("Starting topics-bot, admin={}", config.bot.admin)
     val bot = TelegramBot(config.bot.token.value)
 
+    Logger.info("Long-polling started")
     bot.handleUpdates()
-    // start long-polling listener
 }
 
 fun initXodus(): TransientEntityStore {
     XdModel.registerNodes(XdTask)
 
     val databaseHome = config.database.location
+    Logger.info("Initializing Xodus store at {}", databaseHome)
 
     val store = StaticStoreContainer.init(
         dbFolder = databaseHome,
@@ -60,6 +63,7 @@ suspend fun addtopic(user: User, bot: TelegramBot, update: MessageUpdate) {
             chatId = update.message.chat.id
         }
     }
+    Logger.info("Topic added by {} in chat {}", user.id, update.message.chat.id)
     message { "Added. Thanks ${user.username}" }.send(update.message.chat.id, bot)
 }
 
@@ -69,6 +73,7 @@ suspend fun broadcast(bot: TelegramBot, up: MessageUpdate) {
     val chatsToSend = store.transactional {
         XdTask.filter { it.chatId ne up.message.chat.id }.asSequence().map { it.chatId }.distinct().toList()
     }
+    Logger.info("Broadcasting to {} chats", chatsToSend.size)
     for (chat in chatsToSend) {
         message(up.message.text ?: return).send(chat, bot)
     }
@@ -184,6 +189,7 @@ suspend fun export(bot: TelegramBot, up: MessageUpdate) {
     val allTopics = store.transactional {
         chatTopics(chat.id).toList().map { Topic(it) }
     }
+    Logger.info("Exporting {} topics from chat {}", allTopics.size, chat.id)
     val data = Json.encodeToString(allTopics)
     sendDocument(
         data.toByteArray(UTF_8).toImplicitFile(
@@ -203,6 +209,7 @@ suspend fun delete(bot: TelegramBot, up: CallbackQueryUpdate) {
             it.finishedAt = DateTime.now()
         }
     }
+    Logger.info("Topic {} marked finished in chat {}", id, chatId)
     sourceMessageId?.let { deleteMessages(it).send(chatId, bot) }
     message("Don't forget to refresh the task List").sendReturning(chatId, bot).await().getOrNull()?.messageId?.let {
         delay(10.seconds)
@@ -226,6 +233,6 @@ private fun InlineKeyboardMarkupBuilder.firstPageButtons(topicsCount: Int, ids: 
 
 @UnprocessedHandler
 suspend fun handle(update: ProcessedUpdate) {
-    println(update)
+    Logger.debug { "Unprocessed update: $update" }
 }
 
