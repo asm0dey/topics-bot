@@ -20,7 +20,7 @@ kotlin = "2.4.10"
 ##  ⬆ = "2.4.20-Beta1"
 ##  ⬆ = "2.4.20-Beta2"
 
-hoplite="2.7.5"
+hoplite="2.9.0"
 
 kotlin-telegram="9.6.0"
 tinylog="2.7.0"
