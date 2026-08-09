@@ -1,3 +1,4 @@
+import eu.vendeli.tgbot.TelegramBot
 import eu.vendeli.tgbot.annotations.WizardHandler
 import eu.vendeli.tgbot.api.media.getFile
 import eu.vendeli.tgbot.api.message.message
@@ -22,6 +23,7 @@ object ImportWizard {
                 .send(ctx.update.getChat().id, ctx.bot)
         }
 
+        // Download + parse here (not in store) so a bad file aborts cleanly with Finish.
         override suspend fun validate(ctx: WizardContext): Transition {
             val chatId = ctx.update.getChat().id
             val fileId = (ctx.update as? MessageUpdate)?.message?.document?.fileId
@@ -29,40 +31,39 @@ object ImportWizard {
                 message("OK, import aborted").replyKeyboardRemove().send(chatId, ctx.bot)
                 return Transition.Finish
             }
+            val topics = downloadTopics(ctx.bot, fileId)
+            if (topics.isEmpty()) {
+                message("File does not exist or is empty. Import aborted.").send(chatId, ctx.bot)
+                return Transition.Finish
+            }
+            ctx.setState(Upload::class, Json.encodeToString(topics))
             return Transition.Next
         }
 
-        // ponytail: topics serialized to JSON string so the default StringStateManager can persist them
-        override suspend fun store(ctx: WizardContext): String {
-            val fileId = (ctx.update as MessageUpdate).message.document!!.fileId
-            val tgFile = getFile(fileId).sendReturning(ctx.bot).await().getOrNull() ?: return "[]"
-            val bytes = withContext(Dispatchers.IO) { ctx.bot.getFileContent(tgFile) } ?: return "[]"
-            return Json.encodeToString(Json.decodeFromString<List<Topic>>(bytes.decodeToString()))
-        }
+        // ponytail: String return wires the default StringStateManager to this step;
+        // value already set in validate, so just re-persist it (no re-download).
+        override suspend fun store(ctx: WizardContext): String =
+            ctx.getState(Upload::class) as? String ?: "[]"
     }
 
     object Confirm : WizardStep() {
+        // Only entered after Upload succeeded, so topics is guaranteed non-empty here.
         override suspend fun onEntry(ctx: WizardContext) {
-            val chatId = ctx.update.getChat().id
             val topics = topicsOf(ctx)
-            if (topics.isEmpty()) {
-                message("File does not exist or is empty. Import aborted.").send(chatId, ctx.bot)
-                return
-            }
             message("Going to delete all topics and rewrite with new ones (${topics.size} in total)")
                 .forceReply(selective = true)
                 .replyKeyboardMarkup {
                     +"YES"
                     +"NO"
                 }
-                .send(chatId, ctx.bot)
+                .send(ctx.update.getChat().id, ctx.bot)
         }
 
         override suspend fun validate(ctx: WizardContext): Transition {
             val cid = ctx.update.getChat().id
             val topics = topicsOf(ctx)
-            if (topics.isEmpty()) return Transition.Finish
-            if (ctx.update.text != "YES") {
+            // isEmpty guard: if state was lost (e.g. bot restart) don't delete-and-insert-nothing.
+            if (ctx.update.text != "YES" || topics.isEmpty()) {
                 message("Aborting import").replyKeyboardRemove().send(cid, ctx.bot)
                 return Transition.Finish
             }
@@ -82,6 +83,13 @@ object ImportWizard {
             topics(ctx.bot, ctx.update as MessageUpdate)
             return Transition.Finish
         }
+    }
+
+    private suspend fun downloadTopics(bot: TelegramBot, fileId: String): List<Topic> {
+        val tgFile = getFile(fileId).sendReturning(bot).await().getOrNull() ?: return emptyList()
+        val bytes = withContext(Dispatchers.IO) { bot.getFileContent(tgFile) } ?: return emptyList()
+        return runCatching { Json.decodeFromString<List<Topic>>(bytes.decodeToString()) }
+            .getOrElse { emptyList() }
     }
 
     private suspend fun topicsOf(ctx: WizardContext): List<Topic> =
