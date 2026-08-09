@@ -1,6 +1,3 @@
-import CleanDB.Companion.DB_DELETE_NO
-import CleanDB.Companion.DB_DELETE_YES
-import TopicsImport.Import
 import eu.vendeli.tgbot.TelegramBot
 import eu.vendeli.tgbot.annotations.CommandHandler
 import eu.vendeli.tgbot.annotations.CommonHandler
@@ -9,12 +6,11 @@ import eu.vendeli.tgbot.api.media.sendDocument
 import eu.vendeli.tgbot.api.message.deleteMessages
 import eu.vendeli.tgbot.api.message.editMessageText
 import eu.vendeli.tgbot.api.message.message
-import eu.vendeli.tgbot.types.ParseMode.MarkdownV2
 import eu.vendeli.tgbot.types.User
-import eu.vendeli.tgbot.types.internal.*
+import eu.vendeli.tgbot.types.component.ParseMode.MarkdownV2
+import eu.vendeli.tgbot.types.component.*
 import eu.vendeli.tgbot.utils.builders.InlineKeyboardMarkupBuilder
-import eu.vendeli.tgbot.utils.setChain
-import eu.vendeli.tgbot.utils.toImplicitFile
+import eu.vendeli.tgbot.utils.common.toImplicitFile
 import jetbrains.exodus.database.TransientEntityStore
 import kotlinx.coroutines.delay
 import kotlinx.dnq.XdModel
@@ -23,22 +19,25 @@ import kotlinx.dnq.store.container.StaticStoreContainer
 import kotlinx.dnq.util.initMetaData
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import org.tinylog.kotlin.Logger
 import org.joda.time.DateTime
 import org.joda.time.LocalDateTime
 import kotlin.text.Charsets.UTF_8
 import kotlin.time.Duration.Companion.seconds
 
 suspend fun main() {
+    Logger.info("Starting topics-bot, admin={}", config.bot.admin)
     val bot = TelegramBot(config.bot.token.value)
 
+    Logger.info("Long-polling started")
     bot.handleUpdates()
-    // start long-polling listener
 }
 
 fun initXodus(): TransientEntityStore {
     XdModel.registerNodes(XdTask)
 
     val databaseHome = config.database.location
+    Logger.info("Initializing Xodus store at {}", databaseHome)
 
     val store = StaticStoreContainer.init(
         dbFolder = databaseHome,
@@ -64,6 +63,7 @@ suspend fun addtopic(user: User, bot: TelegramBot, update: MessageUpdate) {
             chatId = update.message.chat.id
         }
     }
+    Logger.info("Topic added by {} in chat {}", user.id, update.message.chat.id)
     message { "Added. Thanks ${user.username}" }.send(update.message.chat.id, bot)
 }
 
@@ -73,6 +73,7 @@ suspend fun broadcast(bot: TelegramBot, up: MessageUpdate) {
     val chatsToSend = store.transactional {
         XdTask.filter { it.chatId ne up.message.chat.id }.asSequence().map { it.chatId }.distinct().toList()
     }
+    Logger.info("Broadcasting to {} chats", chatsToSend.size)
     for (chat in chatsToSend) {
         message(up.message.text ?: return).send(chat, bot)
     }
@@ -94,7 +95,7 @@ suspend fun topics(bot: TelegramBot, upd: MessageUpdate) {
     message(text)
         .options { parseMode = MarkdownV2 }
         .inlineKeyboardMarkup { firstPageButtons(topicsCount, ids) }
-        .sendAsync(to = upd.message.chat, via = bot)
+        .sendReturning(to = upd.message.chat, via = bot)
         .await()
         .getOrNull()
 }
@@ -106,7 +107,7 @@ private fun Iterable<XdTask>.textTopics(page: Int = 0) =
     if (none()) "No more tasks :("
     else mapIndexed { index, xdTask ->
         "${(index + 1).toString().padStart(2, '0')}. \uD83D\uDCCC" +
-                "${xdTask.text} by [${xdTask.authorName}](tg://user?=${xdTask.author}) _(${xdTask.createdAt.toLocalDate()})_"
+                "${xdTask.text} by [${xdTask.authorName}](tg://user?id=${xdTask.author}) _(${xdTask.createdAt.toLocalDate()})_"
     }
         .joinToString(
             "\n", postfix = """
@@ -119,19 +120,6 @@ suspend fun start(user: User, bot: TelegramBot) {
     message { "Well hello hello" }.send(user, bot)
 }
 
-
-@CommandHandler(["/cleandb"])
-suspend fun cleandb(bot: TelegramBot, up: MessageUpdate, user: User) {
-    if (user.id == config.bot.admin) {
-        message { "Sure?" }.inlineKeyboardMarkup {
-            callbackData("yes") { DB_DELETE_YES }
-            callbackData("NO") { DB_DELETE_NO }
-        }
-            .send(up.message.chat, bot)
-        bot.inputListener.setChain(up.user, CleanDB.Try)
-        CleanDB.Try.state.set(user, up.message.chat.id)
-    } else message { "Only the bot owner can do it, bro" }.send(up.message.chat, bot)
-}
 
 @CommandHandler(["/myid"])
 suspend fun myid(bot: TelegramBot, user: User) {
@@ -201,20 +189,14 @@ suspend fun export(bot: TelegramBot, up: MessageUpdate) {
     val allTopics = store.transactional {
         chatTopics(chat.id).toList().map { Topic(it) }
     }
+    Logger.info("Exporting {} topics from chat {}", allTopics.size, chat.id)
     val data = Json.encodeToString(allTopics)
     sendDocument(
-        InputFile(
-            data.toByteArray(UTF_8),
+        data.toByteArray(UTF_8).toImplicitFile(
             "export-${up.message.chat.id}-${LocalDateTime.now()}.json",
             "application/json"
-        ).toImplicitFile()
+        )
     ).send(chat, bot)
-}
-
-@CommandHandler(["/import"])
-suspend fun import(bot: TelegramBot, up: MessageUpdate) {
-    message("Please upload previously exported file or type 'abort' to abort import").send(up.message.chat, bot)
-    bot.inputListener.setChain(up.user, Import)
 }
 
 @CommonHandler.Regex("delete=.*", options = [RegexOption.DOT_MATCHES_ALL])
@@ -227,8 +209,9 @@ suspend fun delete(bot: TelegramBot, up: CallbackQueryUpdate) {
             it.finishedAt = DateTime.now()
         }
     }
+    Logger.info("Topic {} marked finished in chat {}", id, chatId)
     sourceMessageId?.let { deleteMessages(it).send(chatId, bot) }
-    message("Don't forget to refresh the task List").sendAsync(chatId, bot).await().getOrNull()?.messageId?.let {
+    message("Don't forget to refresh the task List").sendReturning(chatId, bot).await().getOrNull()?.messageId?.let {
         delay(10.seconds)
         deleteMessages(it).send(chatId, bot)
     }
@@ -250,6 +233,6 @@ private fun InlineKeyboardMarkupBuilder.firstPageButtons(topicsCount: Int, ids: 
 
 @UnprocessedHandler
 suspend fun handle(update: ProcessedUpdate) {
-    println(update)
+    Logger.debug { "Unprocessed update: $update" }
 }
 

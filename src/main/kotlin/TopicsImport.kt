@@ -1,91 +1,104 @@
 import eu.vendeli.tgbot.TelegramBot
-import eu.vendeli.tgbot.annotations.InputChain
-import eu.vendeli.tgbot.api.getFile
+import eu.vendeli.tgbot.annotations.WizardHandler
+import eu.vendeli.tgbot.api.media.getFile
 import eu.vendeli.tgbot.api.message.message
-import eu.vendeli.tgbot.generated.userData
-import eu.vendeli.tgbot.types.User
-import eu.vendeli.tgbot.types.internal.*
+import eu.vendeli.tgbot.types.chain.Transition
+import eu.vendeli.tgbot.types.chain.WizardContext
+import eu.vendeli.tgbot.types.chain.WizardStep
+import eu.vendeli.tgbot.types.component.MessageUpdate
+import eu.vendeli.tgbot.types.component.getChat
+import eu.vendeli.tgbot.types.component.getOrNull
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.dnq.query.asSequence
 import kotlinx.dnq.query.filter
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.decodeFromStream
+import org.tinylog.kotlin.Logger
 
-@InputChain
-class TopicsImport {
-    object Import : TopicsLink() {
-        override val breakCondition: BreakCondition =
-            BreakCondition { _, update, _ -> update.origin.message?.document?.fileId == null }
-        override val retryAfterBreak: Boolean = false
+@WizardHandler(trigger = ["/import"])
+object ImportWizard {
+    object Upload : WizardStep(isInitial = true) {
+        override suspend fun onEntry(ctx: WizardContext) {
+            message("Please upload previously exported file or type 'abort' to abort import")
+                .send(ctx.update.getChat().id, ctx.bot)
+        }
 
-        override suspend fun action(user: User, update: ProcessedUpdate, bot: TelegramBot): List<Topic> {
-            if (update !is MessageUpdate) return emptyList()
+        // Download + parse here (not in store) so a bad file aborts cleanly with Finish.
+        override suspend fun validate(ctx: WizardContext): Transition {
+            val chatId = ctx.update.getChat().id
+            val fileId = (ctx.update as? MessageUpdate)?.message?.document?.fileId
+            if (fileId == null) {
+                message("OK, import aborted").replyKeyboardRemove().send(chatId, ctx.bot)
+                return Transition.Finish
+            }
+            val topics = downloadTopics(ctx.bot, fileId)
+            if (topics.isEmpty()) {
+                message("File does not exist or is empty. Import aborted.").send(chatId, ctx.bot)
+                return Transition.Finish
+            }
+            ctx.setState(Upload::class, Json.encodeToString(topics))
+            return Transition.Next
+        }
 
-            val fileId =
-                update.message.document?.fileId ?: return emptyList<Topic>().also {
-                    message("You should upload file").send(
-                        update.message.chat,
-                        bot
-                    )
-                }
+        // ponytail: String return wires the default StringStateManager to this step;
+        // value already set in validate, so just re-persist it (no re-download).
+        override suspend fun store(ctx: WizardContext): String =
+            ctx.getState(Upload::class) as? String ?: "[]"
+    }
 
-            val tgFile = getFile(fileId)
-                .sendAsync(bot)
-                .await()
-                .getOrNull()
-                ?: return message("File does not exist").send(update.message.chat, bot).let { emptyList() }
-            val topics = Json.decodeFromStream<List<Topic>>(withContext(Dispatchers.IO) {
-                bot.getFileContent(tgFile)!!.inputStream()
-            })
-            message(
-                "Going to delete all topics and rewrite with new ones (${topics.size} in total)"
-            )
+    object Confirm : WizardStep() {
+        // Only entered after Upload succeeded, so topics is guaranteed non-empty here.
+        override suspend fun onEntry(ctx: WizardContext) {
+            val topics = topicsOf(ctx)
+            message("Going to delete all topics and rewrite with new ones (${topics.size} in total)")
                 .forceReply(selective = true)
                 .replyKeyboardMarkup {
                     +"YES"
                     +"NO"
                 }
-                .send(update.message.chat, bot)
-
-            return topics
+                .send(ctx.update.getChat().id, ctx.bot)
         }
 
-        override suspend fun breakAction(user: User, update: ProcessedUpdate, bot: TelegramBot) {
-            message("OK, import aborted").replyKeyboardRemove().send(update.origin.message?.chat ?: return, bot)
-            bot.userData.del(update.origin.message?.chat?.id ?: return, "topics")
-        }
-    }
-
-    object AcceptImport : ChainLink() {
-        override val breakCondition: BreakCondition = BreakCondition { _, update, _ -> update.text != "YES" }
-        override val retryAfterBreak: Boolean = false
-
-        override suspend fun action(user: User, update: ProcessedUpdate, bot: TelegramBot) {
-            if (update !is MessageUpdate) return
-            val cid = update.origin.message?.chat?.id ?: return
-            val topics = Import.state.get(update.message.chat)
+        override suspend fun validate(ctx: WizardContext): Transition {
+            val cid = ctx.update.getChat().id
+            val topics = topicsOf(ctx)
+            // isEmpty guard: if state was lost (e.g. bot restart) don't delete-and-insert-nothing.
+            if (ctx.update.text != "YES" || topics.isEmpty()) {
+                message("Aborting import").replyKeyboardRemove().send(cid, ctx.bot)
+                return Transition.Finish
+            }
             store.transactional {
-                XdTask.filter { it.chatId eq cid }.asSequence().forEach {
-                    it.delete()
-                }
-
-                topics?.forEach {
+                XdTask.filter { it.chatId eq cid }.asSequence().forEach { it.delete() }
+                topics.forEach {
                     XdTask.new {
                         createdAt = it.createdAt
                         author = it.author
                         authorName = it.authorName
                         text = it.text
-                        chatId = update.message.chat.id
+                        chatId = cid
                     }
                 }
             }
-            message("Done. Updated topics list:").replyKeyboardRemove().send(cid, bot)
-            topics(bot, update)
-        }
-
-        override suspend fun breakAction(user: User, update: ProcessedUpdate, bot: TelegramBot) {
-            message("Aborting import").replyKeyboardRemove().send(update.origin.message?.chat ?: return, bot)
+            Logger.info("Import: replaced topics in chat {} with {} imported", cid, topics.size)
+            message("Done. Updated topics list:").replyKeyboardRemove().send(cid, ctx.bot)
+            topics(ctx.bot, ctx.update as MessageUpdate)
+            return Transition.Finish
         }
     }
+
+    private suspend fun downloadTopics(bot: TelegramBot, fileId: String): List<Topic> {
+        val tgFile = getFile(fileId).sendReturning(bot).await().getOrNull()
+            ?: return emptyList<Topic>().also { Logger.warn("Import: file {} not resolvable", fileId) }
+        val bytes = withContext(Dispatchers.IO) { bot.getFileContent(tgFile) }
+            ?: return emptyList<Topic>().also { Logger.warn("Import: no content for file {}", fileId) }
+        return runCatching { Json.decodeFromString<List<Topic>>(bytes.decodeToString()) }
+            .getOrElse {
+                Logger.warn(it, "Import: failed to parse topics from file {}", fileId)
+                emptyList()
+            }
+    }
+
+    private suspend fun topicsOf(ctx: WizardContext): List<Topic> =
+        Json.decodeFromString(ctx.getState(Upload::class) as? String ?: "[]")
 }

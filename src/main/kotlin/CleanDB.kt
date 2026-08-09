@@ -1,43 +1,39 @@
-import eu.vendeli.tgbot.TelegramBot
-import eu.vendeli.tgbot.annotations.InputChain
+import eu.vendeli.tgbot.annotations.WizardHandler
 import eu.vendeli.tgbot.api.message.message
-import eu.vendeli.tgbot.generated.userData
-import eu.vendeli.tgbot.types.User
-import eu.vendeli.tgbot.types.internal.BreakCondition
-import eu.vendeli.tgbot.types.internal.ChainLink
-import eu.vendeli.tgbot.types.internal.ProcessedUpdate
+import eu.vendeli.tgbot.types.chain.Transition
+import eu.vendeli.tgbot.types.chain.WizardContext
+import eu.vendeli.tgbot.types.chain.WizardStep
+import eu.vendeli.tgbot.types.component.getChat
 import kotlinx.dnq.query.toList
+import org.tinylog.kotlin.Logger
 
-@InputChain
-class CleanDB {
-    companion object {
-        const val DB_DELETE_YES = "yes"
-        const val DB_DELETE_NO = "NO"
-    }
-
-    object Try : CleanDbLink() {
-        override val breakCondition = BreakCondition { _, update, _ -> update.text != DB_DELETE_YES }
-        override val retryAfterBreak: Boolean = false
-
-        override suspend fun action(user: User, update: ProcessedUpdate, bot: TelegramBot): Long? {
-            val to = state.get(user) ?: return null
-            store.transactional {
-                XdTask.all().toList().forEach {
-                    it.delete()
-                }
+@WizardHandler(trigger = ["/cleandb"])
+object CleanDbWizard {
+    object Confirm : WizardStep(isInitial = true) {
+        override suspend fun onEntry(ctx: WizardContext) {
+            val chatId = ctx.update.getChat().id
+            if (ctx.user.id != config.bot.admin) {
+                message { "Only the bot owner can do it, bro" }.send(chatId, ctx.bot)
+                return
             }
-            message { "Okay boss. Gotcha" }
-                .replyKeyboardRemove(false)
-                .send(to, bot)
-            state.del(user)
-            return null
+            message { "Sure?" }.inlineKeyboardMarkup {
+                callbackData("yes") { "yes" }
+                callbackData("NO") { "NO" }
+            }.send(chatId, ctx.bot)
         }
 
-        override suspend fun breakAction(user: User, update: ProcessedUpdate, bot: TelegramBot) {
-            message { "ABORT! I REPEAT ABORT!" }
-                .replyKeyboardRemove(false)
-                .send(state.get(user) ?: return, bot)
-            state.del(user)
+        override suspend fun validate(ctx: WizardContext): Transition {
+            val chatId = ctx.update.getChat().id
+            // ponytail: non-admin who reached validate just ends the wizard silently
+            if (ctx.user.id != config.bot.admin) return Transition.Finish
+            if (ctx.update.text == "yes") {
+                store.transactional { XdTask.all().toList().forEach { it.delete() } }
+                Logger.warn("Admin {} wiped ALL topics", ctx.user.id)
+                message { "Okay boss. Gotcha" }.replyKeyboardRemove(false).send(chatId, ctx.bot)
+            } else {
+                message { "ABORT! I REPEAT ABORT!" }.replyKeyboardRemove(false).send(chatId, ctx.bot)
+            }
+            return Transition.Finish
         }
     }
 }
