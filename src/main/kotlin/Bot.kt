@@ -102,7 +102,7 @@ private fun Iterable<XdTask>.textTopics(page: Int = 0) =
     if (none()) "No more tasks :("
     else mapIndexed { index, xdTask ->
         "${(index + 1).toString().padStart(2, '0')}. \uD83D\uDCCC" +
-                "${xdTask.text} by [${xdTask.authorName}](tg://user?=${xdTask.author}) _(${xdTask.createdAt.toLocalDate()})_"
+                "${xdTask.text} by [${xdTask.authorName}](tg://user?id=${xdTask.author}) _(${xdTask.createdAt.toLocalDate()})_"
     }
         .joinToString(
             "\n", postfix = """
