@@ -16,7 +16,7 @@ telegram-bot = { id = "eu.vendeli.telegram-bot", version.ref = "kotlin-telegram"
 
 [versions]
 
-kotlin = "2.4.10"
+kotlin = "2.4.20"
 ##  ⬆ = "2.4.20-Beta1"
 ##  ⬆ = "2.4.20-Beta2"
 
