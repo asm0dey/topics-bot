@@ -41,7 +41,7 @@ tinylog-kotlin={group="org.tinylog", name="tinylog-api-kotlin",version.ref="tiny
 tinylog-impl = "org.tinylog:tinylog-impl:2.8.0"
 xodus-dnq="org.jetbrains.xodus:dnq:2.0.0"
 
-tinylog-api-kotlin = "org.tinylog:tinylog-api-kotlin:2.7.0"
+tinylog-api-kotlin = "org.tinylog:tinylog-api-kotlin:2.8.0"
 ##                                               ⬆ :2.8.0-M1"
 
 slf4j-tinylog = "org.tinylog:slf4j-tinylog:2.7.0"
