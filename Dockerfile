@@ -1,10 +1,10 @@
-FROM gradle:jdk21-alpine AS builder
+FROM gradle:jdk21-alpine@sha256:20010e663396ffee19018c1adccc4989ec49d1ff04a791630df58609d0f398fd AS builder
 
 COPY . /project
 
 RUN cd /project && ./gradlew build --no-daemon
 
-FROM bellsoft/liberica-runtime-container:jre-slim AS runner
+FROM bellsoft/liberica-runtime-container:jre-slim@sha256:c8767c16ed098372ff85ae32a5504f585271e0e78523988ac5fa2058cd46be85 AS runner
 
 RUN mkdir -p /app && mkdir -p /db
 
