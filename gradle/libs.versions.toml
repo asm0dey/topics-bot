@@ -32,7 +32,7 @@ ksp="2.3.12"
 [libraries]
 
 hoplite = {group="com.sksamuel.hoplite", name="hoplite-core", version.ref="hoplite"}
-hoplite-toml = "com.sksamuel.hoplite:hoplite-toml:2.9.0"
+hoplite-toml = "com.sksamuel.hoplite:hoplite-toml:3.0.0"
 ##                                            ⬆ :3.0.0.RC1"
 ##                                            ⬆ :3.0.0.RC2"
 ##                                            ⬆ :3.0.0.RC3"
