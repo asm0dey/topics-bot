@@ -16,14 +16,14 @@ telegram-bot = { id = "eu.vendeli.telegram-bot", version.ref = "kotlin-telegram"
 
 [versions]
 
-kotlin = "2.4.20"
+kotlin = "2.4.21"
 ##  ⬆ = "2.4.20-Beta1"
 ##  ⬆ = "2.4.20-Beta2"
 
 hoplite="2.9.0"
 
-kotlin-telegram="9.6.0"
-tinylog="2.8.0"
+kotlin-telegram="9.7.0"
+tinylog="2.8.1"
 ## ⬆ = "2.8.0-M1"
 
 kotlinx-serialization = "1.11.0"
@@ -38,10 +38,10 @@ hoplite-toml = "com.sksamuel.hoplite:hoplite-toml:2.9.0"
 ##                                            ⬆ :3.0.0.RC3"
 tinylog-slf4j={group="org.tinylog", name="slf4j-tinylog",version.ref="tinylog"}
 tinylog-kotlin={group="org.tinylog", name="tinylog-api-kotlin",version.ref="tinylog"}
-tinylog-impl = "org.tinylog:tinylog-impl:2.8.0"
+tinylog-impl = "org.tinylog:tinylog-impl:2.8.1"
 xodus-dnq="org.jetbrains.xodus:dnq:2.0.0"
 
-tinylog-api-kotlin = "org.tinylog:tinylog-api-kotlin:2.7.0"
+tinylog-api-kotlin = "org.tinylog:tinylog-api-kotlin:2.8.1"
 ##                                               ⬆ :2.8.0-M1"
 
 slf4j-tinylog = "org.tinylog:slf4j-tinylog:2.7.0"
