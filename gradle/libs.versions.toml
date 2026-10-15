@@ -44,7 +44,7 @@ xodus-dnq="org.jetbrains.xodus:dnq:2.0.0"
 tinylog-api-kotlin = "org.tinylog:tinylog-api-kotlin:2.8.1"
 ##                                               ⬆ :2.8.0-M1"
 
-slf4j-tinylog = "org.tinylog:slf4j-tinylog:2.7.0"
+slf4j-tinylog = "org.tinylog:slf4j-tinylog:2.8.1"
 
 dnq = "org.jetbrains.xodus:dnq:2.0.0"
 
