@@ -4,7 +4,7 @@ COPY . /project
 
 RUN cd /project && ./gradlew build --no-daemon
 
-FROM bellsoft/liberica-runtime-container:jre-slim@sha256:0e260e386ddd48f719292dafacd75d02b2d1ce6ff5d6e7c0eb199441ff4eec4a AS runner
+FROM bellsoft/liberica-runtime-container:jre-slim@sha256:12b1c2c044fe633ad7c6f1cc8ecfdaf5a5d70bc1248d484c460dad8e0a21c63b AS runner
 
 RUN mkdir -p /app && mkdir -p /db
 
